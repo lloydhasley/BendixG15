@@ -1,0 +1,118 @@
+
+Various formats are used throughout the BendixG15 
+Various software pieces comprise the BendixG15 infrastructure.
+
+In restoring a BendixG15 computer to life, one quickly discovers
+that software is the limiting factor.   Without software, hardware
+is useless.  A few tape images have been acquired (pf.com and from 
+David Green @ Australian computer museum)   In addition, a small 
+5-level paper tape reader has been developed and tapes were read
+thus far at two computer museums (living computer museum@Seattle
+and System Source museum@Baltimore)
+
+
+Tape image flow:
+
+PTR(pf)     ==> pt2pti      ===|            |==> pti2pt  ==>  PT
+                               |            |
+PTIR(lcm)   ==> ptir2pti    ===|            |==> pti2ptr ==>  PTR
+                               |===> PTI ===|
+PTIR(ss)    ==> ptir2pti    ===|            |==> pti2sum ==>  SUM
+                               |            |
+PTIR(lh)    ==> ptir2pti    ===|            |==> pti2dis ==>  DIS
+                                            |
+                                            |==> pti2v   ==>  V
+
+The above diagram show the flow of tape images.  At the heart of the 
+flow is storing the tape image in PTI file format (described below).
+PTI files are stored in the sub-directory images.  A variety of 
+derivative file formats can be generated from this PTI image.
+Tapes are read and are initially stored in a format suitable for that 
+particular reader.  
+
+
+Tape formats:
+
+Extension   Format Description
+====================================
+*.pt      5-level binary
+*.ptr     5-level binary, columns reversed (used with 8-level punches)
+*.ptir    pti ascii "raw" file
+*.pti     pti ascii file
+*.sum     Checksums, by block
+*.dis     disassembled view
+*.v       Verilog Behavioral model (makes ROM from tape)
+
+
+Note:  Optionally these suffixes may be proceeded by a "_NT" to indicate
+that an artificial number track has been insert at the front of the tape
+image.   This makes programs bootable, that would other wise require
+test routines or Diaper to be loaded into the system first.
+
+
+PTI:
+Is a human readable ASCII file.   Each character represents a single
+symbol on the paper tape only the symbols have been mapping to ASCII
+characters.
+
+    Tape Binary     File ASCII  Function
+    ================================================
+    data 0-9        '0'-'9'     Data Nibble
+    data u-z        'U'-'Z'     Data Nibble
+    cntrl 0         ' '         Space
+    cntrl 1         '-'         Minus Sign
+    cntrl 2         'C'         Carriage Return
+    cntrl 2         'D'         Carriage Return
+    cntrl 3         'T'         Tab
+    cntrl 4         'S'         Stop
+    cntrl 5         '/'         Reload
+    cntrl 5         'R'         Reload (legacy)
+    cntrl 6         '.'         Period
+    cntrl 7         'W'         Wait (not used on paper tape)
+    
+    binary data u-z         'U'-'Z'
+    binary space 0
+    binary minus sign 1     ASCII '-'
+    binary reload   '/'    (sometimes 'R' has been used)
+    binary stop     
+
+
+PT:
+Is a binary format.  Matches the Bendix G15 tape format definition.
+Including all leader/trailer/block spaces as required. 
+
+PTR:
+Similar to PT, but bit columns are reversed.  When using a 8-track
+punch/reader on 5-level tape, the columns are reversed when reading 
+and need to be reversed before punching.
+
+PTIR:
+PTI file format but "raw".  Additional data filters and error checks
+are made when reading PTIR files.
+
+SUM:
+Generates the checksum for each block in the tape image
+
+DIS:
+Disassembler view.   Each word is treated as an instruction and its
+meaning output.   Since the G15 does not execute instructions from 
+sequential addresses, this is not a very useful format.
+
+V:
+Verilog Format.  Generates a Verilog Rom Image of the tape image.  
+This is suitable for inclusion in FPGA emulators.   100MHz operation
+has been obtained using a Spartan-VI FPGA.
+
+
+***********************
+
+The known quality of the tape images varies.
+
+The dgreen tapes have been used in an emulator and intercom does work correctly.
+The test routine tape from pf has been used in both a python emulator and in a Verilog FPGA.
+the lcm tapes are the newest and diaper has been run through an emulator.
+
+
+
+
+

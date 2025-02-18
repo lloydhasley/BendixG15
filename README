@@ -1,0 +1,40 @@
+###############
+Library of known g15 tapes
+
+These tape images have been acquired from a variety of 
+sources.  The "captured" tape images were in different 
+formats and have different artifacts embedded in them.
+They are converted to a ascii character tape image format (pti).
+From the PTI format, a variety of formats are generated:
+
+*.pti       Tape Image - Ascii format (master format)
+*.ptir      raw tape image (as read without error checks)
+*.ptw		29bit word (unsigned) format
+*.pt		5 bit binary tape format (Suitable for punching onto a tape)
+*.ptr		5bit binary, reversed - for punching a 8 track tape punch w 5 level tape
+*.dis		Disassembler listing
+*.sum		Checksum
+*.v			Verilog Behavioral model (makes ROM from tape)
+
+
+**********************
+
+After cloning repository:
+
+make		# first make creates tape_images directory and place *.pti files there
+make		# second make creates derivative tape formats (described above)
+
+To clean
+
+make clean
+
+***********************
+
+The known quality of the tape images varies.
+
+The dgreen tapes have been used in an emulator and intercom does work correctly.
+The test routine tape from pf has been used in both a python emulator and in a Verilog FPGA.
+the lcm tapes are the newest and diaper has been run through an emulator.
+
+
+

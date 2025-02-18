@@ -1,0 +1,16 @@
+#
+# listing known (verified) tape images
+#
+# much work is done behind the scenes......
+#
+# symbolic links are created from the file with source loc encoded
+# to filename without the source location
+#
+# ie diaper_reel1_lcm.pti becomes diaper_reel1.pti
+#
+# list uddated 4 Feb 2025
+#
+diaper_reel1_lcm.pti
+diaper_reel2_lcm.pti
+intercom_d_dg.pti
+ttr12_dg.pti
