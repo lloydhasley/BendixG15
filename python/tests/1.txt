@@ -1,0 +1,44 @@
+verbosity drum 0
+verbosity cpu 0
+
+#verbosity cpu 2048     # ar debug
+
+button dc off
+switch enable off
+switch tape off
+switch compute off      # note compute or run, do not use both
+
+#####################################
+#
+# bring up the machine
+#
+
+ptr mount tapes/intercom1000rob_NT.pti
+button dc on
+
+# machine is up, NT loaded
+
+#switch compute go
+switch compute center
+run 300
+
+type 500900ts
+run 500
+type 421000ts
+run 500
+type 431002ts
+run 500
+type 332101ts
+run 500
+type 670000ts
+run 500
+
+type 511000//ts
+run 500
+type 4/23ts
+run 1000
+type 1.76ts
+run 1000
+
+type 0690900//ts
+run 1000

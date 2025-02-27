@@ -1,0 +1,2 @@
+ptr mount tapes/diaper_reel1.pti
+

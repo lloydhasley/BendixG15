@@ -1,0 +1,16 @@
+
+#
+# load emulator with common constants
+include tests/constants.txt
+
+# mount and execute test routines
+
+# ttr12 #1
+# include tests/ttr_1.txt
+
+# ttr12 #2
+# include tests/ttr_2.txt
+
+# diaper
+include tests/diaper.txt
+

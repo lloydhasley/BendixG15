@@ -1,0 +1,163 @@
+d#
+# scripts mount test routines 1 & 2
+# then runs test 1
+#
+# script verifies emulator operation against tests in test 1
+#
+verbosity drum 0
+# verbosity cpu 0
+
+ptr mount tapes/ttr12_pf.pt
+button on
+
+status sim
+
+#############################
+# initial block (LOADER)
+#############################
+
+# following 'power on' first two blocks are read in
+# 1st block should be number track and is copied to CN
+# 2nd block should be ttr loader
+
+verify drum CN:0:107 0147x86w
+verify drum 19:0:107 0
+
+# 1st instruction copies to track 0
+run 1
+dd 0:0:107
+verify drum 0:0:107 0
+
+run 1
+verify pc 0:2
+
+# now running the PPR loader
+tr 2
+verify pc 0:16
+
+tr 4
+verify flags 0
+
+#
+# short line 20, long line 2,3 write/read
+#
+tr 4
+dd 20:0:10
+verify drum 20:0:3  -zzzzzzw
+verify drum 03:0:3  -zzzzzzw
+dd 20:0:10
+dd 3:0:10
+
+tr 4
+verify drum 20:8:11  8000221
+verify drum 02:0:3  8000221
+
+# load accumulator
+tr
+verify drum 28:0:0 1
+
+# print it, which clears AR
+tr 2
+verify drum 0:34:33 0
+verify drum 28:0:0 0
+
+run 2
+
+# execute through test, check pc=pc+1 not +2
+tr 1
+verify drum 28:0:0 0
+verify pc 0:35
+
+tr 5
+
+# verify in loop waiting for typewriter input
+verify pc 0:39
+verify iostatus 12
+
+# select TTR 1
+type 0000002ts
+
+# wait for PTR to run in next block of TTR
+run 5
+verify pc 0:44
+verify drum 19:0:107 888vw2w
+
+tr 3
+
+verify pc 19:0
+
+status sim
+
+#############################
+# initial block is complete
+#############################
+
+run 2
+verify pc 0:2
+
+run 7
+verify pc 0:21
+
+run 4
+verify pc 0:25
+verify drum 20:04:07 -zzzzzzw
+verify drum 3:0:3 -zzzzzzw
+dd 3:0:3
+dd 20:0:3
+
+run 4
+verify pc 0:29
+verify drum 20:8:11 8000221
+verify drum 2:0:3 8000221
+dd 3:0:3
+dd 20:0:3
+
+run 1
+status cpu
+verify drum 28:0:0 xxxxxxx
+
+run 3
+
+# read next block of tape
+tr 3
+
+verify drum 19:0:107 4xvxx12
+dd 19:0:3
+dd 19:u3:u7
+
+tr 8
+
+status cpu
+status sim
+
+#############################
+# tape block 3 is now in track 0
+# tape block 4 is now in track 1
+#############################
+
+run 8
+verify drum 28:0:0  0
+
+run 3
+verify drum 28:0:0 0
+
+# pc=31
+
+# verbosity cpu 15
+tr -a 5
+
+dd PN:0:1
+dd ID:0:1
+dd MQ:0:1
+
+verify drum PN:0:0 4xvxx16
+verify drum ID:0:0 4xvxx16
+verify drum MQ:0:0 4xvxx16
+
+run 2500
+# pc=44
+tr -a 2
+
+status cpu
+status sim
+

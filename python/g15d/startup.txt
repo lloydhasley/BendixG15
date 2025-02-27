@@ -1,0 +1,12 @@
+
+#
+# load emulator with common constants
+include g15d/constants.txt
+
+verbosity drum 0
+verbosity cpu 0
+
+button dc off
+switch enable off
+switch tape off
+switch compute off      # note compute or run, do not use both

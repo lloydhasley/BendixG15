@@ -1,0 +1,45 @@
+#
+# scripts mount test routines 1 & 2
+# then runs test 1
+#
+# script verifies emulator operation against tests in test 1
+#
+verbosity drum 0
+verbosity cpu 0
+
+ptr mount tapes/diaper_reel1_lcm.pt
+button on
+
+status sim
+
+#############################
+# initial block (LOADER)
+#############################
+
+# following 'power on' first two blocks are read in
+# 1st block should be number track and is copied to CN
+# 2nd block should be ttr loader
+
+verify drum CN:0:107 0147x86w
+
+run 30
+
+verify iostatus IO_STATUS_TYPE_IN
+
+# select all tests
+type s
+
+run 12000
+verify iostatus IO_STATUS_TYPE_IN
+
+type 142s
+
+run 40000
+
+ptr mount tapes/diaper_reel2_lcm.pt
+
+run 40000
+
+status cpu
+status sim
+

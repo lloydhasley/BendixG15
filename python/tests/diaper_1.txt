@@ -1,0 +1,58 @@
+#
+# script runs diaper reels 1 and 2
+#
+# script verifies emulator operation against tests in test 1
+#
+verbosity drum 0
+verbosity cpu 0
+
+#verbosity cpu 2048     # ar debug
+
+button dc off
+switch enable off
+switch tape off
+switch compute off      # note compute or run, do not use both
+
+
+#####################################
+#
+# bring up the machine
+#
+# 
+ptr mount TAPES/lcm/diaper_reel1.pti
+button dc on
+
+status cpu
+
+
+run 30    # run until prompt
+
+status cpu
+
+# run 30
+
+type s
+
+run 12000    # run until prompt
+
+#type 345s
+type 142s
+
+run 30000
+
+status cpu
+status sim
+
+#
+# machine should be halted
+#
+ptr mount TAPES/lcm/diaper_reel2.pti
+#sw enable on
+#type p
+#sw enable off
+# note: loader is autoread 
+
+run 80000
+
+
+quit

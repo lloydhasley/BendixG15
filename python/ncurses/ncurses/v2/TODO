@@ -1,0 +1,118 @@
+
+# in iosys
+    add a set_status method
+        gets called by both cpu and the io devices when done
+        if activating IO
+            calls that io routines
+    add check status
+        if IO active
+            calls that io routines
+
+slow_in
+    errormesg unknown char, convert to g15 hex before print
+
+test non-zero /L27
+    is sign bit suppose to enter to determination?
+        assume yes.
+        AR/PN should never contain a minus-0, but data words might
+
+iosys.get_status
+    should it return boolean Ready or the entire variable
+        entire variable
+    wait unitl ptr is fed through to iosys to decide.
+    modify cmds.py:verify to use
+
+disassembler
+    use dgreen's format, raw terms, followed by derived terms.
+    add .s style output
+
+button on
+    readblock message.
+    simplifiy?
+
+attach GUI
+
+cmp prompt
+    needs double CR before displaying prompt.
+
+verify iostatus
+    error is not flowing to end of simulation run
+
+move NT creation to cpu from PTR.
+    have PTR compare tape block against stored NT
+
+on dissassembly
+    add field to drum memory indicating which tape block was block of orgin
+    when tape is copied into 19, label with origin tape block
+    when a block copy is performed copying track to track (usually from 19)
+        copy tape block id with it.
+    when printing code disassembly during trace execution, add tape block prefix.
+
+on block commands
+    copies or AR+, add to dissassembly fields start and end times of the block.
+
+TTR12:
+    u 38,37,0,28,28  What does this one do.
+
+cpu dc button off
+    should terminate simuations, not just lock sim engine
+
+typewriter
+    add direct G15 command input
+    add alphanumeric modes
+
+error if 1st block read after power on is not NT
+
+subrinit is not getting called
+
+reduce checksum routines
+    PTR has two
+    drum has one
+    subr has one.
+        bbelieve subr should be the golden one
+
+delete any unneeded xplicit implementations under special
+
+can we eliminate int variable type
+    use comp2s of known size (29 or 58)
+    always add instead of subtract
+
+replace int(x,0) with a g15 hex equivalent
+
+verbose does not register with cmd interpreter unlike verbosity
+
+cpu has hex converting routine
+    have created another (not debugged in subr)
+    pick one (is cpu only place where used)
+
+add history to typewriter output
+    list history to move to iosys
+
+architectural questions:
+    should minus0 writes to AR,be changed to pos0
+        emulator currently does this.
+
+TTR12 abnominallies
+    two loaders on tape prior to TTR1
+    ttr12 from PF and DG are different
+    TTR1 0:19  T=20 in listing, T=21 in tape
+
+cpu children verbosity flags should point back to cpu module
+    instead of during __init__ constructioon
+    to allow dynamic setting
+
+Python/Verilog differences:
+    need to check Verilog:
+        instr 18 at wr 30: print AR
+            coding manual (and python) clears AR
+            while Verilog does not
+        instr 26 at wrt 32,  repeatedly waiting for IOReady,   ACC begins to rotate left by four bits
+            why?  not always, just sometimes.
+            4-bit precess implies IO character arrived.
+            but why does ACC precess?  shouldn't this be contained to iO-subsystem?
+
+paragraph D61 return exit
+    different results with compute sw in go or bp
+
+need to add a CPU.close() at sim shutdown
+    needs to call vtrace logger

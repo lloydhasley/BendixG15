@@ -1,0 +1,81 @@
+#
+# script bendix music program
+#
+verbosity drum 0
+verbosity cpu 0
+
+#verbosity cpu 2048     # ar debug
+
+button dc off
+switch enable off
+switch tape off
+switch compute off      # note compute or run, do not use both
+
+
+#####################################
+#
+# bring up the machine
+#
+# 
+#####################################
+
+ptr mount TAPES/lcm/diaper_reel1.pti
+button dc on
+
+music on
+
+# machine is up, NT loaded
+# ptr mount TAPES/ss/UP041.pti
+ptr mount TAPES/ss/XmasMusic-1.pti
+
+switch enable on
+type p
+switch enable off
+
+run  170
+
+switch enable on
+type p
+switch enable off
+
+run 60
+
+#type 00t/2vzts
+
+run 50
+#type v2zts
+run 50
+
+#type -1t/s
+run 100    # note is still playing
+
+
+
+
+#run 2400    # note is still playing
+dd 1:0:107
+dd 2:0:107
+dd 3:0:107
+
+status cpu
+
+#switch enable on
+#type f
+#switch enable off
+
+run 50
+
+#ptr mount TAPES/ss/XmasMusic-1.pti
+type -5t/s
+
+run 50
+
+
+run 1000
+dd 1:0:107
+dd 2:0:107
+dd 3:0:107
+status cpu
+
+
+quit
