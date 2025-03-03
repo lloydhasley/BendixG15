@@ -28,9 +28,9 @@ class g15d_log:
                 print('Error, Cannot open execution log file: ', filename)
                 self.fout = sys.stdout
 
-        self.header = "   ICNT:   TIME   :TRK:RC:   TR   :   INSTR:DEF: T: N:C: S: D:BP:      EB:      IB:      "
-#        self.header += "LB:      AR:              PN:              ID:              MQ:FO:IP:IOSTATUS:      TIME"
-        self.header += "LB:      AR:              PN:              ID:              MQ:FO:IP:IOSTATUS:DESCRIPTION"
+        self.header = "   ICNT:     TIME : TR  :   INSTR  :TRK.RC:DEF: T: N:C: S: D:BP:      EB:      IB:      "
+#       self.header += "LB:      AR:              PN:              ID:              MQ:FO:IP:IOSTATUS:      TIME"
+        self.header += "LB:      AR:          MQ(24):          ID(25):          PN(26):FO:IP:IOSTATUS : DESCRIPTION"
 
     def close(self):
         if self.fout != sys.stdout:
@@ -52,10 +52,8 @@ class g15d_log:
 
         str1 = "%7d" % self.cpu.total_instruction_count
         str2 = instr_dec_hex_convert(instruction['loc'])
-#        str3 = ' ' + instr_dec_hex_convert(self.cpu.word_time_rollover(time_start)) + '  '
-#        str4 = ' ' + instr_dec_hex_convert(self.cpu.word_time_rollover(time_end)) + '  '
-        str3 = ' ' + instr_dec_hex_convert(self.cpu.word_time_rollover(time_start))
-        str4 = ' ' + instr_dec_hex_convert(self.cpu.word_time_rollover(time_end))
+        str3 = instr_dec_hex_convert(self.cpu.word_time_rollover(time_start))
+        str4 = instr_dec_hex_convert(self.cpu.word_time_rollover(time_end))
         if instruction['cmd_acc']:
             str5 = "ACC"
         else:
@@ -70,7 +68,10 @@ class g15d_log:
 
         str22 = "%10s" % self.g15.drum.time_get_str()
 
-        lstr1 = str1 + ":" + str22 + ":" + str5 + ":" + str2 + ":" + str3 + "-" + str4 + ":" + ":" + str7 + ':'
+        print("AAAA" + str22 + "BBBB")
+
+#        lstr1 = str1 + ":" + str22 + ":" + str5 + ":" + str2 + ":" + str3 + "-" + str4 + ":" + str7 + ':'
+        lstr1 = str1 + ":" + str22 + ":" + str3 + "-" + str4 + ": " + str7 + ' : ' + str5 + ':' + str2 + ':'
 
         if instruction['deferred']:
             str8 = "  w"
@@ -88,7 +89,7 @@ class g15d_log:
         str13 = instr_dec_hex_convert(instruction['d'])
         str14 = "%2d" % instruction['bp']
 
-        lstr2 = str8 + ":" + str9 + ":" + str10 + ":" + str11 + ":" + str12 + ":" + str13 + ":" + str14 + ":"
+        lstr2 = str8 + "." + str9 + "." + str10 + "." + str11 + "." + str12 + "." + str13 + "." + str14 + ":"
 
         ar = self.g15.drum.read(AR, 0, 0)
         reg_pn = (self.g15.drum.read(PN, 1, 0) << 29) | self.g15.drum.read(PN, 0, 0)
@@ -99,17 +100,17 @@ class g15d_log:
             str14 = signmag_to_str(intermediate_bus)
             str15 = signmag_to_str(late_bus)
             str16 = signmag_to_str(ar)
-            str17 = signmag_to_str(reg_pn, str_width=16)
+            str17 = signmag_to_str(reg_mq, str_width=16)
             str18 = signmag_to_str(reg_id, str_width=16)
-            str19 = signmag_to_str(reg_mq, str_width=16)
+            str19 = signmag_to_str(reg_pn, str_width=16)
         else:
             str13 = mag_to_str(early_bus, 9)
             str14 = mag_to_str(intermediate_bus, 9)
             str15 = mag_to_str(late_bus, 9)
             str16 = mag_to_str(ar, 9)
-            str17 = mag_to_str(reg_pn, 17)
+            str17 = mag_to_str(reg_mq, 17)
             str18 = mag_to_str(reg_id, 17)
-            str19 = mag_to_str(reg_mq, 17)
+            str19 = mag_to_str(reg_pn, 17)
 
         str20 = "%2s" % self.cpu.overflow
         str20a = "%2s" % self.cpu.flop_ip
@@ -123,7 +124,7 @@ class g15d_log:
             str23 = instruction['sspecial']
 
         lstr3 = str13 + ":" + str14 + ":" + str15 + ":" + str16 + ":" + str17
-        lstr3 = lstr3 + ":" + str18 + ":" + str19 + ":" + str20 + ":" + str20a + ':' + str21 + ':' + str23
+        lstr3 = lstr3 + ":" + str18 + ":" + str19 + ":" + str20 + ":" + str20a + ':' + str21 + ' : ' + str23
 
         if self.stdout_enable:
             print(self.header)

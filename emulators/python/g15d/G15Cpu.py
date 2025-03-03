@@ -333,7 +333,6 @@ class G15Cpu:
         # basic timing
         #
         ############################################
-
         # single precession & not divide or even word times
         instruction['ts'] = (not instruction['dp']) and (not instruction['divide']) or \
                             ((word_time & 1) == 0)
@@ -353,6 +352,10 @@ class G15Cpu:
             print("%15s:" % "early_bus", '  %08x' % early_bus, '%08x' % (early_bus >> 1))
             print("%15s:" % "intermediate_bus", '  %08x' % intermediate_bus, '  %08x' % (intermediate_bus >> 1))
             print("%15s:" % "late_bus", '  %08x' % late_bus, '  %08x' % (late_bus >> 1))
+
+        if instruction['d'] == 19:
+            sm = int_to_signmag(late_bus)
+            print("\t\twrite to 19, data=", signmag_to_str(sm), " wt=", word_time % 108,  " instrcount=", self.total_instruction_count)
 
         self.cpu_store.store_late_bus(late_bus, instruction, word_time)
 
@@ -409,7 +412,7 @@ class G15Cpu:
 
     #
     ##############################
-
+    #
     # print a log of instruction execution to compare against Verilog results
     #
     #############################
@@ -418,7 +421,6 @@ class G15Cpu:
     def word_time_rollover(num):
         while num >= 108:
             num = num - 108
-
         return num
 
     def status_cpu(self):
@@ -432,8 +434,6 @@ class G15Cpu:
             status = 'OFF'
             
         print('\tDc Power is: ' + status)
-
-#        print('\t  IO status: ', self.g15.iosys.status)
         print('\t  IO status: ', io_status_str[self.g15.iosys.status])
         print('\t   IO Ready: ', self.g15.iosys.get_status())
         print('\t         AR: ', int_to_str(acc))
@@ -461,7 +461,6 @@ class G15Cpu:
         print('\t        Number of instructions executed: ', self.total_instruction_count)
         print('\tNumber of unknown instructions executed: ', self.unknown_instruction_count)
         print()
-
         print('\tNumber of Bell Rings: ', self.bell_ring_count)
 
     # gather machine status for display

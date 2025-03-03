@@ -473,7 +473,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
         # get new cmdline
         instruction['next_cmd_line'] = instruction['ch']
 
-
         # get the variables
         loc = instruction['loc']
         xt = instruction['t']
@@ -489,7 +488,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             xmark += 108
 
         print("RTM: loc=",loc, " xt=",xt, " xn=",xn, " xmark=",xmark)
-
 
         if xt <= xn and xn <= xmark:
             instruction['next_cmd_word_time'] = instruction['n']

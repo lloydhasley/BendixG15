@@ -9,6 +9,7 @@
 import sys
 
 from G15Subr import *
+from printg15 import printg15
 
 MAXIODEVICES = 16
 
@@ -104,15 +105,23 @@ class G15Io:
                 self.g15.drum.display(M23, 0, 4)
 
             if data & G15_DIGIT:
+                print('m23 data at digit entry')
+                self.g15.drum.display(M23, 0, 4)
+
                 # data nibble
                 self.g15.drum.precess(M23, 4)
+
+                print('m23 data after precess = ', mag_to_str(data))
+                self.g15.drum.display(M23, 0, 4)
+                printg15(" data=%x" % data)
+
 
                 m23_data = self.g15.drum.read(M23, 0)
                 m23_data |= data & 0xf
                 self.g15.drum.write(M23, 0, m23_data)
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print('m23 data after precess = ', mag_to_str(data))
+                    print('m23 data after precess & write = ', mag_to_str(data))
                     self.g15.drum.display(M23, 0, 4)
 
                 continue

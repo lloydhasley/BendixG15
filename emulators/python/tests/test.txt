@@ -1,0 +1,25 @@
+#
+# run test routines 1 & 2
+
+verbosity drum 0
+verbosity cpu 0
+
+# verbosity drum VERBOSITY_DRUM_OP
+# verbosity cpu VERBOSITY_CPU_DETAILS
+
+# mount test routines and turn machine on
+ptr mount tapes/ttr12.pt
+button on
+
+# wait for typewrite prompt
+tr 46
+
+# select test routine #1
+type 0000002ts
+
+# tr 308
+# verbosity drum VERBOSITY_DRUM_OP
+# verbosity cpu VERBOSITY_CPU_DETAILS
+
+
+tr 2500
