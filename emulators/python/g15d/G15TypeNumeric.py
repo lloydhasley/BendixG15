@@ -1,6 +1,5 @@
 
 
-from G15Constants import *
 from G15Subr import *
 
 
@@ -13,8 +12,6 @@ class G15TypeNumeric:
         self.input_buffer = []              # line buffer of G15 symbols types, ready for transfer to G15
 
     def type_enable(self, cmd_str):
-#        cmd_str = cmd_str[4:]   # bypass type command str
-        
         for c in cmd_str:
             if (c == ' ') or (c == '\t'):
                 continue
@@ -29,11 +26,11 @@ class G15TypeNumeric:
                 continue
 
             if c == 'b':
-                self.cpu.block = self.g15.ptr.reverse(1)
+                self.g15.cpu.block = self.g15.ptr.reverse(1)
                 continue
 
             if c == 'c':
-                self.g15.cpu.instruction['next_cmd_line'] = instruction['ch']
+                self.g15.cpu.instruction['next_cmd_line'] = self.g15.cpu.instruction['ch']
                 continue
                 
             if c == 'i':
@@ -76,11 +73,14 @@ class G15TypeNumeric:
     def write(self, outstr):
         # type on typewriter
 
-#        print(outstr)
+        list(filter(G15_WAIT.__ne__, outstr))
+        list(filter(G15_RELOAD.__ne__, outstr))
+        list(filter(G15_STOP.__ne__, outstr))
 
         ascii_str = self.g15.iosys.io_2_ascii(outstr)
         self.output_history.append(ascii_str)
-        print(ascii_str)
+
+        print("TYPEOUT: ", ascii_str)
 
     def read(self):
         # characters from keyboard,

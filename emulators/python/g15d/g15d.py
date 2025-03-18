@@ -21,7 +21,6 @@ import Emul
 def main():
     files_startup = [dir + '/startup.txt']
     configuration = 'numeric'
-#    vtracefile = 'vtrace.log'
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('-i', action='append', dest='startfiles', default=files_startup)
@@ -30,7 +29,7 @@ def main():
     arg_parser.add_argument('-c', action='store', dest='configuration', default=configuration)
     arg_parser.add_argument('-S', action='store_false', dest='signenable', default=True)
     arg_parser.add_argument('-t', action='store', dest='tapes', default='.')
-    	# signenable=1 vtrace files displays integers as signed, else 29bits unsigned
+    # signenable=1 vtrace files displays integers as signed, else 29bits unsigned
     arg_parser.add_argument('scriptfile', nargs='?', default=None)
     	
     args = arg_parser.parse_args()

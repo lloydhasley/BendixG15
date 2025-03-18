@@ -18,7 +18,7 @@ class g15d_math:
         self.cpu = cpu
         self.g15 = cpu.g15
 
-    def multiply(self):
+    def multiply(self, debug):
         """ Peforms the multiply function """
         bit57 = 1 << 57
         mask58 = (1 << 58) - 1
@@ -41,21 +41,20 @@ class g15d_math:
             reg_mq <<= 1
             reg_mq &= mask58
 
-            if self.verbosity & G15Cpu.VERBOSITY_CPU_MATH:
-                # wt = self.cpu.instruction['word_time']
+            if debug:
                 print('cwt=', wt + (2 * i), 'pn=%015x' % reg_pn, ' id=%015x' % reg_id, ' mq=%015x' % reg_mq)
-        # reg_pn >>= 1
+
         reg_pn &= mask58_nosign
 
         self.g15.drum.write_two_word(ID, 0, reg_id)
         self.g15.drum.write_two_word(MQ, 0, reg_mq)
         self.g15.drum.write_two_word(PN, 0, reg_pn)
 
-    def divide(self):
+    def divide(self, debug):
         mask59 = (1 << 59) - 1
         mask59a = mask59 - 1
 
-        if False:
+        if debug:
             print("divide, instr count=", self.cpu.total_instruction_count)
 
         instruction = self.cpu.instruction
@@ -66,7 +65,7 @@ class g15d_math:
         id = self.g15.drum.read_two_word(ID, 0)
         mq = self.g15.drum.read_two_word(MQ, 0)
 
-        if self.verbosity & G15Cpu.VERBOSITY_CPU_MATH:
+        if debug:
             print('pn=%015x' % pn)
             print('id=%015x' % id)
             if id == 0:
@@ -78,7 +77,6 @@ class g15d_math:
             idz = ((~id) + 1) & mask59
 
         IS = 1      # start w subtraction
-        # for i in range(58):
         for i in range(iterations):
             if IS:
                 m = pn + idz
@@ -89,7 +87,7 @@ class g15d_math:
             mq = (mq << 1) | (IS << 1)
             pn = ((m & mask59a) << 1) & mask59
 
-            if self.verbosity & G15Cpu.VERBOSITY_CPU_MATH:
+            if debug:
                 print('i=', i)
                 print('pn=%015x' % pn)
                 print('mq=%015x' % mq)
@@ -101,7 +99,7 @@ class g15d_math:
         mq |= 2 
 
         # divide by 0 in diaper, reveals sign clear if PN result is zero over bits of interest
-        if False:
+        if debug:
             print(" mask58=%015x" % MASK58BIT)
             iterationmask = (1 << iterations) - 1
             print("intmask=%015x" % iterationmask)
@@ -118,7 +116,7 @@ class g15d_math:
             if mq & (1 << 58):
                 self.cpu.overflow = 1
 
-        if self.verbosity & G15Cpu.VERBOSITY_CPU_MATH:
+        if debug:
             print('pn=%015x' % pn)
             print('id=%015x' % id)
             print('mq=%015x' % mq)

@@ -15,12 +15,14 @@ import time
 
 from G15Constants import *
 
-ALLOWABLE_LEN_VARIATION = 2
+ALLOWABLE_LEN_VARIATION = 4
+ALLOWABLE_LEN_VARIATION = 40
 MIN_RUN_LEN = 20
 
 FRAMERATE_f = 1000000 / BIT_TIME		# bit frequency
 FRAMERATE = int(FRAMERATE_f)
 
+music_debug = 0
 
 p= pyaudio.PyAudio()
 
@@ -41,16 +43,12 @@ class EmulMusic:
 		self.music_enable = False
 
 		self.capture_tracks = { 2:1, 3:1, 19:1}
-
-#		self.musicdb = {
-#			4: 849, 5: 917, 6: 1019, 7: 1155, 8: 1222, 9: 1290, 10: 1358, 11: 1528, 12: 1630,
-#			13: 1732, 14: 1834, 15: 0, 16: 2038, 17: 2310, 18: 2445
-#		}
 		self.musicdb = {}
 
-		print(". BIT_TIME: ", BIT_TIME)
-		print(" WORD_TIME: ", WORD_TIME)
-		print("TRACK_TIME: ", TRACK_TIME)
+		if music_debug:
+			print(". BIT_TIME: ", BIT_TIME)
+			print(" WORD_TIME: ", WORD_TIME)
+			print("TRACK_TIME: ", TRACK_TIME)
 
 		self.outstream = None
 		self.playtrack = 2
@@ -58,11 +56,9 @@ class EmulMusic:
 
 		self.thread_run = True
 		self.t2 = threading.Thread(target=self.play, daemon=True)
-#		self.t2.start()
 
 	def close(self):
 		self.thread_run = False
-#		self.t2.join()
 		if self.outstream:
 			self.outstream.close()
 
@@ -93,7 +89,6 @@ class EmulMusic:
 			if self.outstream:
 				self.outstream.close()
 
-
 		if music_enable:
 			print("setting music enable")
 			self.music_enable = True
@@ -102,8 +97,6 @@ class EmulMusic:
 	def trackcopy(self, instruction):
 		# we have a track copy instruction execution into a possible music track (2,3,19)
 		#
-		# print("trackcopy, to ", instruction['d'])
-
 		if not self.music_enable:
 			print("music is not enabled")
 			return
@@ -123,13 +116,12 @@ class EmulMusic:
 		else:
 			frequency = 0
 
-		print("music s:%02d" % s, " -> d:%02d" % d, ' freq=%6.1f' % frequency,
-			  " at time: ", current_time)
+		if music_debug:
+			print("music s:%02d" % s, " -> d:%02d" % d, ' freq=%6.1f' % frequency,
+				  " at time: ", current_time)
 
 		if d == self.playtrack:
 			self.stream_toplay = stream
-#			time.sleep(2 * TRACK_TIME / 1000000)
-		#time.sleep(1)
 
 	def search(self):
 		count = 0
@@ -140,7 +132,8 @@ class EmulMusic:
 			retval = self.extract(i)
 			if retval:
 				count += 1
-				print("track: %2d" % i, "%6.1f" % self.musicdb[i]['frequency'], "Hz")
+				print("track: %2d" % i, "%6.1f" % self.musicdb[i]['frequency'], "Hz",
+					  " max variation from square: ", self.musicdb[i]['max_variation'])
 			else:
 				print("track: %2d" % i, " not a music track")
 
@@ -159,15 +152,12 @@ class EmulMusic:
 		else:
 			db = self.extract_db(track)
 			# note: bits is a list of [bit values, run_lengths]
-			self.frequency = self.determine_if_square(track, db)
-
-#		if self.frequency == 0:
-#			return False
+			self.max_variation, self.frequency = self.determine_if_square(track, db)
 
 		samples = self.mk_stream(track)
 		stream = bytes(samples)
 
-		entry = {'frequency': self.frequency, 'samples': samples, 'stream': stream }
+		entry = {'frequency': self.frequency, 'max_variation': self.max_variation, 'samples': samples, 'stream': stream }
 		self.musicdb[track] = entry
 		return True
 
@@ -222,16 +212,16 @@ class EmulMusic:
 		bit = (word >> word_pos) & 1
 		return bit
 
-	@staticmethod
-	def determine_if_square(track, db):
+	# @staticmethod
+	def determine_if_square(self, track, db):
 		if track == 2:
-			return 0
+			return 0, 0
 
 		# print("TRACK = ", track)
 		average_length = []
 		for value in [0, 1]:
 			if len(db[value]) == 0:
-				return 0
+				return 0, 0
 
 			#  determine average run_length
 			totalsum = 0
@@ -239,9 +229,6 @@ class EmulMusic:
 				totalsum += run_length
 			sum_average = totalsum / len(db[value])
 			average_length.append(sum_average)
-
-			# print("ave=", average_length)
-			# print("db=", db)
 
 			# determine run length variation
 			max_variation = 0
@@ -253,17 +240,18 @@ class EmulMusic:
 				if run_length < MIN_RUN_LEN:
 					tooshort = 1
 
-			if (max_variation > ALLOWABLE_LEN_VARIATION) or tooshort:
-				# print("NO SQUARE WAVE DETECTED on track: ", track)
-				return 0
+			if music_debug:
+				print("NO SQUARE WAVE DETECTED on track: ", track)
+				print(" max observed variation: ", max_variation)
+				print(" tooshort: ", tooshort)
+				return 0, 0
 
 		# have a square wave
 		period_length = average_length[0] + average_length[1]
 		period = period_length * BIT_TIME		# in uS
 		frequency = 1000000.0 / period			# in Hz
 
-		# print("freq=", frequency, "instr count=", self.g15.cpu.total_instruction_count)
-		return frequency
+		return max_variation, frequency
 
 	# currently not used
 	def extract_bits(self, track):

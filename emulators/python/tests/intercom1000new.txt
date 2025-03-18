@@ -34,8 +34,8 @@ button dc on
 run 250
 
 # enter program
-dd 02:00:50
-type 500900//ts     # enter commands
+# dd 02:00:50
+type 500900ts     # enter commands
 run 2000
 type 421000ts       # clear&add <1000>
 run 2000
@@ -43,10 +43,11 @@ type 431002ts       # add <1002>
 run 2000
 type 332100ts
 run 2000
-#type 670000ts       # return to manual
-#run 2000
+type 670000ts       # return to manual
+run 2000
 
-dd 02:00:50
+# dd 09:00:10
+# dd 02:00:50
 # enter data
 type 0670000//ts     # cmd input to manual
 run 2000
@@ -54,19 +55,17 @@ type 0511000//ts     # enter fixed pt
 run 2000
 #type 4/23ts
 type  53/671875ts
-run 4000
-type 0511002//ts     # enter fixed pt
-run 4000
+run 2000
+#type 0511002//ts     # enter fixed pt
+#run 2000
 type 5/77ts
-run 4000
+run 2000
+# dd 10:00:10
 
-regs
+# regs
 
 # run program
 type 0690900//ts     # run the program
 run 5000            # program should auto return to manual
-
-
-# dd 02:00:50
 
 quit

@@ -50,7 +50,7 @@ class G15Cpu:
         self.g15 = g15  # back pointer to g15 main class
         self.emul = g15.emul
         self.verbosity = Verbosity
-        self.verbosity = VERBOSITY_CPU_TRACE
+#        self.verbosity = VERBOSITY_CPU_TRACE
 
         self.vtracefile = vtracefile
         self.signenable = signenable    # print numbers with sign+28 instead of 29 bits
@@ -185,13 +185,8 @@ class G15Cpu:
     
             # sixth: read second block to L19
             self.block = self.g15.ptr.read_block()
-    
-            # everything is ready, start the G15
-            # self.g15.sim.request_lock(SIM_REQUEST_UNLOCK)  # allow execution thread to commenc
         elif (value == 'off') and (self.power_status == 'on'):
             # off button pressed, while power is applied
-            # self.g15.sim.request_lock(SIM_REQUEST_LOCK)  # stop the execution thread.
-
             # turn things off
             self.cpu_init(value)
 
@@ -236,27 +231,20 @@ class G15Cpu:
     def instruction_execute(self, trace_flag):
         """
         Executes a single instruction
-
         Will fetch, decode, and execute a G15 instruction
 
         :param trace_flag:      1=print machine state following instruction
         """
-        self.verbosity = VERBOSITY_CPU_TRACE
-
         if self.verbosity & VERBOSITY_CPU_TRACE:
             trace_flag = 1
 
         if self.verbosity & VERBOSITY_CPU_DETAILS:
             print('entering exec instr')
-        #
 
         if not self.power_status:
             print("DC power has not been applied")
             print("Enter 'button dc on' to apply")
             return -1
-
-#        if self.total_instruction_count == 437:
-#            print("hello")
 
         # get/fetch the instruction (retain origin of instruction + the 29bit instruction
         instruction = self.cpu_fetch.fetch()
@@ -266,15 +254,16 @@ class G15Cpu:
         # note: most emulators display results of insturctions
         # but since we are debugging the emulator, we display the instruction first
         if trace_flag:
-            print(instruction['disassembly'])
+            print("%6d"%self.total_instruction_count + '\t' + instruction['disassembly'])
 
         # determine the begining and ending times for this instruction
         time_start = instruction['time_start']
         time_end = instruction['time_end']
 
+        self.g15.drum.revolution_check(time_end % 108)
+
         if self.verbosity & (VERBOSITY_CPU_DEBUG | VERBOSITY_CPU_MICRO_TRACE):
             print('\t        Number of instructions executed: ', self.total_instruction_count)
-
             print('instruction=', instruction)
             print('word times: start=', time_start % 108, ' end=', time_end % 108)
 
@@ -285,7 +274,14 @@ class G15Cpu:
             early_bus, intermediate_bus, late_bus = self.execute(instruction, self.word_time)
         else:
             # regular instructions cycle through the appropriate word times
-            for self.word_time in range(time_start, time_end + 1):
+            te = time_end
+            if te < time_start:
+                te += 108
+
+            if self.verbosity & VERBOSITY_CPU_TRACE:
+                print("\tts=", time_start, " te=", te, '/', te % 108)
+
+            for self.word_time in range(time_start, te + 1):
                 early_bus, intermediate_bus, late_bus = self.execute(instruction, self.word_time)
 
             # handle emulator oddities
@@ -311,11 +307,11 @@ class G15Cpu:
             if self.verbosity & VERBOSITY_CPU_MICRO_TRACE:
                 print("Cpu has hit breakpoint")
 
-        # increment instruction count
-        self.total_instruction_count += 1
-
         # noinspection PyUnboundLocalVariable
         self.cpu_log.logger(time_start, time_end, early_bus, intermediate_bus, late_bus)
+
+        # increment instruction count
+        self.total_instruction_count += 1
 
         # if trace_flag:
         if self.verbosity & VERBOSITY_CPU_MICRO_TRACE:
@@ -353,17 +349,11 @@ class G15Cpu:
             print("%15s:" % "intermediate_bus", '  %08x' % intermediate_bus, '  %08x' % (intermediate_bus >> 1))
             print("%15s:" % "late_bus", '  %08x' % late_bus, '  %08x' % (late_bus >> 1))
 
-        if instruction['d'] == 19:
-            sm = int_to_signmag(late_bus)
-            print("\t\twrite to 19, data=", signmag_to_str(sm), " wt=", word_time % 108,  " instrcount=", self.total_instruction_count)
-
         self.cpu_store.store_late_bus(late_bus, instruction, word_time)
 
         if self.verbosity & VERBOSITY_CPU_TRACE:
-            print("\tTRACE: icnt=",self.total_instruction_count, " wt= ", wordtime_to_str(word_time % 108),
-                  " early_bus= ", signmag_to_str(early_bus),
-                  " late_bus= ", signmag_to_str(late_bus),
-                  " d=", instruction['d'])
+            print("%6d" % self.total_instruction_count, "\t\t\t\twrite",
+                  str(instruction['d']) + '.' + str(instruction['word_time'] % 108) + ': %8s' % signmag_to_str(late_bus))
 
         if instruction['d'] == SPECIAL:
             self.cpu_d31.d31_special(instruction)
@@ -451,13 +441,13 @@ class G15Cpu:
         #
         next_instr_dict = copy.deepcopy(self.instruction)
         next_instr_dict['instr'] = self.g15.drum.read(cmd_track, self.instruction['next_cmd_word_time'])
-#        print('\t  Next Instr: ', next_instr_dict['disassembly'])
         print("*** TURN ON DISASSEMBLY OF NEXT INSTRUCTION")
         
         #
         # $ of insturctions executed to date
         #
         print()
+
         print('\t        Number of instructions executed: ', self.total_instruction_count)
         print('\tNumber of unknown instructions executed: ', self.unknown_instruction_count)
         print()

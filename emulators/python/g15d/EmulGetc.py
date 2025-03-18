@@ -21,19 +21,10 @@ class CharIO:
         self.q = queue.Queue()
         self.q_enable = queue.Queue()
 
-#    def thread_start(self):
-#        # daemon, will stop automatically
-#        self.thread_c = threading.Thread(target=self.thread_getchars, daemon=True)
-#        self.thread_c.start()
-#
-#    def thread_end(self):
-#        pass
-
     def thread_getchars(self):
         # get a character from stdin
 
         self.buffer = ""
-
         while True:
             # k = readchar.readchar()
             # readkey on escape waits for next char,
@@ -50,7 +41,6 @@ class CharIO:
                 continue
 
             # have straight ASCII char
-
             if k == '\b' or k == '\xff':
                 if len(self.buffer) > 0:
                     self.buffer = self.buffer[:-1]

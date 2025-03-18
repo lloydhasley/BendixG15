@@ -113,15 +113,6 @@ class g15d_ib:
 
         else:
             # have a double precission, odd word time
-            
-#            early_bus_extended = (early_bus << 29) | self.old_early_bus
-#            early_bus_2s = (~early_bus_extended) + 1
-#
-#            if self.cpu.flop_is:
-#                intermediate_bus = (early_bus_2s >> 29) & MASK29BIT
-#            else:
-#                intermediate_bus = early_bus
-
             if self.cpu.flop_is:
                 # need to invert
                 intermediate_bus = (~early_bus) & MASK29BIT

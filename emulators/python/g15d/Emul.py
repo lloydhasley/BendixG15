@@ -85,10 +85,7 @@ class Emulator:
         self.runflag = 1
         
         print("Bringing up Emulator and G15 machine")
- #       self.t1 = threading.Thread(target=self.execution_loop, daemon=True)
         self.t2 = threading.Thread(target=self.getc.thread_getchars, daemon=True)
-
-#        self.t1.start()
         self.t2.start()
 
         # setup is complete, good to start
@@ -99,7 +96,6 @@ class Emulator:
         self.cmds.start(self.startfiles)
 
         # start the procssor
-        print("calling execution loop")
         self.execution_loop()
 
         if args.logfile:
@@ -107,7 +103,7 @@ class Emulator:
             sys.stdout.close()
             
     def execution_loop(self):
-    	# G15 runs in its own thread,
+        # G15 runs in its own thread,
     	# runflag will exit the thread
         while self.runflag:
             # note: runflag = 0 will cause thread to exit
@@ -124,10 +120,14 @@ class Emulator:
 
             self.g15.cmds.do_cmd()
 
+            if self.g15.cpu.total_instruction_count == 12463:
+                print("test")
+
             ok2run = 0
             # compute is used during interactive emulator use
             if self.cpu.sw_compute_bp_enable or self.cpu.sw_compute == 'go':
                 ok2run = 1
+
             # run command is typically used during batch test operation
             # and run executes specified number of commands
             if self.number_instructions_to_execute:
@@ -152,35 +152,15 @@ class Emulator:
                 sleep(0.010)        # pause 10ms
 
             continue
-            # semaphore pause 
-            if self.lock_request == SIM_REQUEST_LOCK:
-                self.lock_status = self.lock_request
 
-                # wait for unlock request
-                while self.lock_request != SIM_REQUEST_UNLOCK and self.runflag:
-                    sleep(SEMAPHORE_WAIT_TIME)       
-
-                self.lock_status = self.lock_request
-                
     def sigC_handler(self, sig, frame):
         self.quit()
         
     def quit(self):
         print("Quitting Emulator")
         self.runflag = 0
-
-#        self.t1.join()      # daemon thread auto exit, but here for completeness
         self.music.close()
-
         sys.exit(0)
-
-    def request_lock(self, flag):
-        # LOCK: request pause of the g15 cpu, waits for it to pause
-        # UNLOCKL: releases the g15 cpu for execution
-        self.lock_request = flag
-        
-        while self.lock_status != flag:
-            sleep(SEMAPHORE_WAIT_TIME)
         
     def send_mesg(self, mesg_type, mesg_value):
         mesg = [mesg_type, mesg_value]

@@ -136,6 +136,7 @@ ioSym_to_Binary = {
 	'8': 8, '9': 9, 'u': 10, 'v': 11, 'w': 12, 'x': 13, 'y': 14, 'z': 15,
 	'-': 1, '\n': 2, '\t': 3, 'S': 4, 'R': 5, '.': 6, ' ': 0
 }
+hex2ascii = "0123456789uvwxyz"
 
 SIM_REQUEST_UNLOCK      = 0     # unloack and allow execution thread to run
 SIM_REQUEST_LOCK        = 1     # lock and prevent execution of new instructions
@@ -168,5 +169,14 @@ sw_mappings = {
 	}
 }
 
- 
+cmd_line_map_names = {
+	0: 'L0',
+	1: 'L1',
+	2: 'L2',
+	3: 'L3',
+	4: 'L4',
+	5: 'L5',
+	6: 'L19',
+	7: 'L23'
+}
 

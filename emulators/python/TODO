@@ -105,6 +105,10 @@ backport to c++ type19 condition test on ch==0
 
 backport to c++ return fix for unusual CHs
 
+time_start,time_End
+    is time_End inclusive or exclusive.
+    seems immediate and deferred are using different definitions
+
 int(x,0) bombs if given a non-numeric value
     ie user mistypes a user label
     

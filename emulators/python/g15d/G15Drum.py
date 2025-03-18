@@ -10,7 +10,6 @@
 
 """
 
-# from G15Constants import *
 from G15Subr import *
 
 track_lengths = {
@@ -124,8 +123,8 @@ class G15Drum:
 
         if flag and (self.verbosity & VERBOSITY_DRUM_OP):
             print('Drum  Read: Track=%02d' % track, ' word=%03d' % word_time,
-                    '  read_data= ', signmag_to_str(read_data),
-                    ' /%08x' % read_data)
+                  '  read_data= ', signmag_to_str(read_data),
+                  ' /%08x' % read_data)
 
         return read_data
 
@@ -140,7 +139,7 @@ class G15Drum:
         if self.verbosity & VERBOSITY_DRUM_OP:
             print("Address=", address)
             print('Drum Write: Track=%02d' % track, ' word=%03d' % word_time,
-                ' write_data= ', signmag_to_str(write_data), ' /%08x' % write_data)
+                  ' write_data= ', signmag_to_str(write_data), ' /%08x' % write_data)
 
     def write_block(self, block_id, track, data):
         """
@@ -242,11 +241,11 @@ class G15Drum:
 
         endwordtime defaults to beginwordtime
         """
-        l = len(tokens)
-        if (l < 2) or (l > 3):
+        ll = len(tokens)
+        if (ll < 2) or (ll > 3):
             print('Error: unknown drum address syntax:  track ":" beginwordtime ":" endwordtime')
 
-        elif l == 2:
+        elif ll == 2:
             tokens.append(tokens[1])
 
         t0 = int(tokens[0])
@@ -258,7 +257,7 @@ class G15Drum:
         """ Compute checksum over a drum track (or subset of a drum track) """
 
         if not (track in track_lengths):
-            self.emul.increment_error_counter("Unknown Track id: " + str(track))
+            self.g15.increment_error_counter("Unknown Track id: " + str(track))
             return -1
 
         # get length of drum track
@@ -295,7 +294,7 @@ class G15Drum:
 
     def revolution_init(self):
         self.rev_count = 0
-        self.stop_time_previous = 0
+        self.stop_time_previous = -1
 
     def revolution_check(self, stop_time):
         retval = 0
