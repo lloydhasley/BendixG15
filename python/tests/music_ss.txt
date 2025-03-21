@@ -10,17 +10,15 @@
 #
 #####################################
 
-# ptr mount TAPES/lcm/diaper_reel1.pti
-ptr mount /Users/lhasley/dropbox/projects/g15/tapes/tape_images/diaper_reel1_lcm.ptr
 
-button dc on
 # machine is up, NT loaded
 
 #
 # Load music program
 #
-# ptr mount TAPES/ss/UP041.pti
-ptr mount /Users/lhasley/dropbox/projects/g15/tapes/tape_images/music_lcm.ptr
+ptr mount TAPES/ss/UP041.pti
+# ptr mount /Users/lhasley/dropbox/projects/g15/tapes/tape_images/music_lcm.ptr
+button dc on
 
 #
 # loads base program
@@ -34,9 +32,10 @@ run  1000
 #
 # load program 7900/7901
 #
-switch enable on
-type p
-switch enable off
+#switch enable on
+#type p
+#switch enable off
+run 1000
 
 status cpu
 
@@ -44,7 +43,7 @@ run 50
 #
 # load datafile
 #
-ptr mount musictest/silent2.pti
+ptr mount ../../musictest/silent2.pti
 run 100
 music on        # enable music extraction
 type -5t/s

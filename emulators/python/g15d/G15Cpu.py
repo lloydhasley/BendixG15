@@ -365,10 +365,10 @@ class G15Cpu:
 
         source = instruction['s']
         destination = instruction['d']
-        if time_end > time_start:
-            exec_length = time_end - time_start + 1
-        else:
-            exec_length = time_end - time_start + 108
+
+        exec_length = (time_end + 109 - time_start)
+        if exec_length > 108:
+            exec_length -= 108
 
         # tag drum line if we moved an entire track to another
         if instruction['n'] == time_start:

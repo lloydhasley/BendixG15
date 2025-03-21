@@ -468,9 +468,8 @@ class EmulCmds:
     def cmd_set(self, args):
         """ set macro variables to control emulation  """
 
-        ll = len(args)
-
         # list known macros
+        ll = len(args)
         if ll == 1:
             for var, value in self.syms.items():
                 print('%25s:' % var, ' %s' % value)

@@ -31,7 +31,9 @@ from G15Constants import *
 import EmulMusic
 import EmulGetc
 
-known_g15_configurations = {'numeric': G15Numeric.G15Numeric}
+known_g15_configurations = {
+    'numeric': G15Numeric.G15Numeric
+}
 
 
 class Emulator:
@@ -103,7 +105,8 @@ class Emulator:
             sys.stdout.close()
             
     def execution_loop(self):
-        # G15 runs in its own thread,
+        # G15 runs in its own thread
+        # #    old, G15 now runs in the background thread,
     	# runflag will exit the thread
         while self.runflag:
             # note: runflag = 0 will cause thread to exit
@@ -120,8 +123,8 @@ class Emulator:
 
             self.g15.cmds.do_cmd()
 
-            if self.g15.cpu.total_instruction_count == 12463:
-                print("test")
+#            if self.g15.cpu.total_instruction_count == 12463:
+#                print("test, set bp here")
 
             ok2run = 0
             # compute is used during interactive emulator use

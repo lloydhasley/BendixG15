@@ -7,24 +7,23 @@
 # extracts the period, converts it to a frequency
 # and writes it to a hardcoded file.
 #
-#from selectors import SelectSelector
-#from pyaudio import PyAudio
 import pyaudio
 import threading
 import time
 
 from G15Constants import *
 
-ALLOWABLE_LEN_VARIATION = 4
+# ALLOWABLE_LEN_VARIATION = 4
 ALLOWABLE_LEN_VARIATION = 40
+
 MIN_RUN_LEN = 20
 
 FRAMERATE_f = 1000000 / BIT_TIME		# bit frequency
 FRAMERATE = int(FRAMERATE_f)
 
-music_debug = 0
+music_debug = True
 
-p= pyaudio.PyAudio()
+p = pyaudio.PyAudio()
 
 
 class EmulMusic:
@@ -42,20 +41,24 @@ class EmulMusic:
 		self.notdone = 1
 		self.music_enable = False
 
-		self.capture_tracks = { 2:1, 3:1, 19:1}
+		self.capture_tracks = {2: 1, 3: 1, 19: 1}
 		self.musicdb = {}
 
 		if music_debug:
-			print(". BIT_TIME: ", BIT_TIME)
+			print("  BIT_TIME: ", BIT_TIME)
 			print(" WORD_TIME: ", WORD_TIME)
 			print("TRACK_TIME: ", TRACK_TIME)
 
 		self.outstream = None
-		self.playtrack = 2
+
+		self.playtrack = 2			# set track to play here.!!!
+
 		self.stream_toplay = []
 
 		self.thread_run = True
 		self.t2 = threading.Thread(target=self.play, daemon=True)
+
+		self.max_variation = 0 		# keep pip8 happy
 
 	def close(self):
 		self.thread_run = False
@@ -64,7 +67,7 @@ class EmulMusic:
 
 	def play(self):
 		# music plays in a separate thread
-		while(self.thread_run):
+		while self.thread_run:
 			if self.music_enable and self.outstream and self.stream_toplay != []:
 				self.outstream.write(self.stream_toplay)
 			else:
@@ -74,20 +77,17 @@ class EmulMusic:
 		if not music_enable:
 			self.music_enable = False
 			self.stream_toplay = []
-
-		if music_enable and not self.music_enable:
-			# no music_enable ==> yes music_enable
-			self.search()
-
-			self.outstream = p.open(format=p.get_format_from_width(1),
-					channels=1,
-					rate=FRAMERATE,
-					output=True
-				)
-
-		else:
 			if self.outstream:
 				self.outstream.close()
+
+		if music_enable and not self.music_enable:
+			# no music_enable ==> yes music_enable (leading posedge music_enable
+
+			# locate the tracks that contain square waves (tones)
+			self.search()
+
+			# open output audio channel
+			self.outstream = p.open(format=p.get_format_from_width(1), channels=1, rate=FRAMERATE, output=True)
 
 		if music_enable:
 			print("setting music enable")
@@ -97,14 +97,11 @@ class EmulMusic:
 	def trackcopy(self, instruction):
 		# we have a track copy instruction execution into a possible music track (2,3,19)
 		#
-		if not self.music_enable:
-			print("music is not enabled")
-			return
-
 		current_time = self.g15.drum.time_get_str()
 		d = instruction['d']
 		s = instruction['s']
 
+		# capture source track info, if 2,3 19
 		if d not in self.capture_tracks:
 			return
 
@@ -117,10 +114,9 @@ class EmulMusic:
 			frequency = 0
 
 		if music_debug:
-			print("music s:%02d" % s, " -> d:%02d" % d, ' freq=%6.1f' % frequency,
-				  " at time: ", current_time)
+			print("music s:%02d" % s, " -> d:%02d" % d, ' freq=%6.1f' % frequency, " at time: ", current_time)
 
-		if d == self.playtrack:
+		if d == self.playtrack and stream is not None:
 			self.stream_toplay = stream
 
 	def search(self):
@@ -143,9 +139,9 @@ class EmulMusic:
 	def extract(self, track):
 		self.cur_position = 0
 
-		if self.notdone:
-			self.notdone = 0
-			self.search()
+#		if self.notdone:
+#			self.notdone = 0
+#			self.search()
 
 		if track == 29:
 			self.frequency = 0
@@ -154,10 +150,10 @@ class EmulMusic:
 			# note: bits is a list of [bit values, run_lengths]
 			self.max_variation, self.frequency = self.determine_if_square(track, db)
 
-		samples = self.mk_stream(track)
-		stream = bytes(samples)
+		samples = self.mk_stream(track)  	# create bit stream
+		stream = bytes(samples)				# creat byte stream
 
-		entry = {'frequency': self.frequency, 'max_variation': self.max_variation, 'samples': samples, 'stream': stream }
+		entry = {'frequency': self.frequency, 'max_variation': self.max_variation, 'samples': samples, 'stream': stream}
 		self.musicdb[track] = entry
 		return True
 
@@ -212,8 +208,8 @@ class EmulMusic:
 		bit = (word >> word_pos) & 1
 		return bit
 
-	# @staticmethod
-	def determine_if_square(self, track, db):
+	@staticmethod
+	def determine_if_square(track, db):
 		if track == 2:
 			return 0, 0
 
@@ -240,7 +236,7 @@ class EmulMusic:
 				if run_length < MIN_RUN_LEN:
 					tooshort = 1
 
-			if music_debug:
+			if False:
 				print("NO SQUARE WAVE DETECTED on track: ", track)
 				print(" max observed variation: ", max_variation)
 				print(" tooshort: ", tooshort)
