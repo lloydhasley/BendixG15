@@ -1,6 +1,5 @@
 
 
-from G15Constants import *
 from G15Subr import *
 
 
@@ -12,9 +11,9 @@ class G15TypeNumeric:
         self.output_history = []            # output (and input) history buffer
         self.input_buffer = []              # line buffer of G15 symbols types, ready for transfer to G15
 
+        self.out_history = [[]]
+
     def type_enable(self, cmd_str):
-#        cmd_str = cmd_str[4:]   # bypass type command str
-        
         for c in cmd_str:
             if (c == ' ') or (c == '\t'):
                 continue
@@ -29,11 +28,11 @@ class G15TypeNumeric:
                 continue
 
             if c == 'b':
-                self.cpu.block = self.g15.ptr.reverse(1)
+                self.g15.cpu.block = self.g15.ptr.reverse(1)
                 continue
 
             if c == 'c':
-                self.g15.cpu.instruction['next_cmd_line'] = instruction['ch']
+                self.g15.cpu.instruction['next_cmd_line'] = self.g15.cpu.instruction['ch']
                 continue
                 
             if c == 'i':
@@ -76,11 +75,34 @@ class G15TypeNumeric:
     def write(self, outstr):
         # type on typewriter
 
-#        print(outstr)
+        list(filter(G15_WAIT.__ne__, outstr))
+        list(filter(G15_RELOAD.__ne__, outstr))
+        list(filter(G15_STOP.__ne__, outstr))
+
 
         ascii_str = self.g15.iosys.io_2_ascii(outstr)
-        self.output_history.append(ascii_str)
-        print(ascii_str)
+        #self.output_history.append(ascii_str)
+
+        while True:
+            if ascii_str[0] == ' ':
+                ascii_str = ascii_str[1:]
+            else:
+                break
+
+        # following handles output whose lines span multiple format statements
+        while True:
+            ii = ascii_str.find("\n")
+            if ii == -1:
+                self.out_history[-1].append(ascii_str[:ii])
+                print("TYPEOUT: ", self.out_history[-1])
+                continue
+            self.out_history[-1].append(ascii_str[:ii])
+            self.out_history.append([])
+            print("TYPEOUT: ", self.out_history[-1])
+            ascii_str = ascii_str[ii + 1:]
+            break
+
+#        print("TYPEOUT: ", ascii_str)
 
     def read(self):
         # characters from keyboard,
@@ -95,7 +117,7 @@ class G15TypeNumeric:
         #   g15 gets typewrite input when it tests for io ready
         #
         # maintains a 50 line history buffer (in ascii)
-        # buffer is shared without output
+        # buffer is shared with output
         #
         # maintains a one-line buffer for transfer to G15 (in G15 symbols)
         #

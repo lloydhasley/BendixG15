@@ -4,8 +4,12 @@ special destination (D=31)
 
 
 from G15Subr import *
-# import G15Cpu
 import G15Cpu_math
+
+VERBOSITY_MATH_MULTIPLY = 1
+VERBOSITY_MATH_DIVIDE = 2
+VERBOSITY_D31_MARKRET = 4
+VERBOSITY_D31 = 8
 
 
 # noinspection PyPep8Naming
@@ -21,6 +25,8 @@ class g15d_d31(G15Cpu_math.g15d_math):
         self.g15 = cpu.g15
         self.verbosity = verbosity
 
+        self.verbosity |= VERBOSITY_MATH_DIVIDE
+
     def d31_special(self, instruction):
         """ Explicit decode of instructions given the coding manual
 
@@ -34,7 +40,16 @@ class g15d_d31(G15Cpu_math.g15d_math):
         loc = instruction['loc']
 
         if instruction['s'] == 0:
-            self.unverified_instruction()
+            # self.unverified_instruction()
+
+            status = self.g15.iosys.get_status()
+            if status & 3:
+                self.g15.drum.precess(M19, WORD_SIZE)
+                self.g15.drum.precess(M19, WORD_SIZE)
+                self.g15.drum.precess(M19, WORD_SIZE)
+                self.g15.drum.precess(M19, WORD_SIZE)
+            self.g15.iosys.set_status(IO_STATUS_READY)
+
             return
         elif instruction['s'] == 1:
             self.unverified_instruction()
@@ -56,8 +71,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             # reverse paper tape
             #
             #
-            # self.unverified_instruction()
-
             self.d31_special_print('reverse paper tape reader by one block', g15d_d31.SPRINT_DONE)
             self.cpu.block = self.g15.ptr.reverse(1)
             return
@@ -78,7 +91,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 self.unverified_instruction()
 
                 ar = self.g15.drum.read(AR, 0)
-
                 self.d31_special_print('print AR in alphanumeric mode - need to implement', g15d_d31.SPRINT_NOT_DONE)
                 self.d31_special_print('   ar = %09x' % ar, g15d_d31.SPRINT_DONE)
 
@@ -93,18 +105,8 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 # clears AR (if standard format is used)
                 #
                 ar = self.g15.drum.read(AR, 0)
-
-#                self.d31_special_print('print AR in numeric mode - need to implement', g15d_d31.SPRINT_NOT_DONE)
-#                self.d31_special_print('   ar = %09x' % ar, g15d_d31.SPRINT_DONE)
-
                 self.d31_special_print("TypeAR, numeric mode", g15d_d31.SPRINT_DONE)
-                print("total_instruction_count", self.cpu.total_instruction_count)
-                #print("instruction=", instruction)
-
                 self.g15.iosys.slow_out(DEV_IO_TYPE, AR)
-#                self.g15.drum.write(AR, 0, ar)     # verilog shows AR is preserved, so restore value
-#                self.g15.drum.write(AR, 0, 0)     # verilog shows AR is preserved, so restore value
-
                 return
 
         elif instruction['s'] == 9:
@@ -119,13 +121,11 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # prints until l19 is 0 or until 8-bit code group where 7:4]==0
                 #
-
                 self.unverified_instruction()
                 print()
                 self.d31_special_print('print line 19 in alphanumeric mode - need to add', g15d_d31.SPRINT_DONE)
 
                 self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
-
                 return
 
             elif instruction['ch'] == 0 and (loctest == instruction['t']):
@@ -139,10 +139,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 print("total_instruction_count", self.cpu.total_instruction_count)
 
                 self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
-
-#                for i in range(108):
-#                    self.g15.drum.write(19, i, 0)
-
                 return
 
         elif instruction['s'] == 10:
@@ -150,7 +146,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # punch line 19 to tape
                 # using format in line 02
-                #
                 #
                 self.unverified_instruction()
 
@@ -168,7 +163,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 self.unverified_instruction()
 
                 self.d31_special_print('activate alphanumeric type-in', g15d_d31.SPRINT_DONE)
-
                 return
 
             elif instruction['ch'] == 0 and (loc + 2) == instruction['t']:
@@ -178,7 +172,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 self.d31_special_print('activate numeric type-in', g15d_d31.SPRINT_DONE)
 
                 self.g15.iosys.set_status(IO_STATUS_IN_TYPEWRITER)
-
                 return
 
         elif instruction['s'] == 13:
@@ -191,28 +184,24 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 tape_unit = instruction['ch']
 
                 self.d31_special_print('read mag tape, from unit: ' + str(tape_unit), g15d_d31.SPRINT_DONE)
-
                 return
 
         elif instruction['s'] == 14:
             pass
             
         elif instruction['s'] == 15:
-            #if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
             if True:
                 #
                 # read paper tape
                 #
                 self.d31_special_print('read punched tape', g15d_d31.SPRINT_DONE)
-
                 self.cpu.block = self.g15.ptr.read_block()
-
                 return
 
         elif instruction['s'] == 16:
-			#
-			# halt
-			#
+            #
+            # halt
+            #
             self.cpu.halt_status = 1
             return
 
@@ -222,8 +211,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 pass
             elif ch == 1:
                 self.d31_special_print('Check Typwriter Punch Switch', g15d_d31.SPRINT_DONE)
-                #self.unverified_instruction()
-
                 if self.cpu.sw_tape == 'punch':
                     instruction['next_cmd_word_time'] += 1
             elif ch == 2:
@@ -266,19 +253,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             #
             # select command line and return
             #
-            self.ReturnToMark(instruction)
-
-            if False:
-                instruction['next_cmd_line'] = instruction['ch']
-    
-                newN = (108 + instruction['n'] - instruction['t']) % 108
-                newM = (108 + self.cpu.mark_time - instruction['t']) % 108
-                if newN < newM:
-                    self.unverified_instruction()
-                    instruction['next_cmd_word_time'] = instruction['n']
-                else:
-                    instruction['next_cmd_word_time'] = self.cpu.mark_time
-    
+            self.ReturnFromMark(instruction)
             return
 
         elif instruction['s'] == 21:
@@ -286,15 +261,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             # select command line and mark
             #
             self.GoToMark(instruction)
-            
-            if False:
-                instruction['next_cmd_line'] = instruction['ch']
-    
-                if instruction['deferred']:
-                    self.cpu.mark_time = instruction['t']
-                else:
-                    self.cpu.mark_time = instruction['loc'] + 1
-
             return
 
         elif instruction['s'] == 22:
@@ -353,14 +319,14 @@ class g15d_d31(G15Cpu_math.g15d_math):
             #
             # multiply
             #
-            self.multiply()
+            self.multiply(self.verbosity & VERBOSITY_MATH_MULTIPLY)
             return
 
         elif instruction['s'] == 25:
             #
             # divide
             #
-            self.divide()
+            self.divide(self.verbosity & VERBOSITY_MATH_DIVIDE)
             return
 
         elif instruction['s'] == 26:
@@ -377,7 +343,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             reg_id = self.g15.drum.read_two_word(ID, 0)
             reg_ar = self.g15.drum.read(AR, 0)
 
-            for j in range(instruction['t']>>1):
+            for j in range(instruction['t'] >> 1):
                 if reg_ar & (1 << 29):
                     reg_ar = 0
                     break
@@ -469,31 +435,33 @@ class g15d_d31(G15Cpu_math.g15d_math):
         self.unverified_instruction()
         return
 
-    def ReturnToMark(self, instruction):
-        # get new cmdline
+    def ReturnFromMark(self, instruction):
         instruction['next_cmd_line'] = instruction['ch']
 
-        # get the variables
-        loc = instruction['loc']
-        xt = instruction['t']
-        xn = instruction['n']
-        mark = self.cpu.mark_time
-        xmark = mark
+        start_search = instruction['time_end']
+        start_search += 1
+        if start_search > 107: start_search -= 108
 
-        if xt < loc:
-            xt += 108
-        if xn < xt:
-            xn += 108
-        while xmark < xt:
-            xmark += 108
+        marked_word = self.cpu.mark_time
 
-        print("RTM: loc=",loc, " xt=",xt, " xn=",xn, " xmark=",xmark)
+        # check each WT after TR for the marked_word
+        next_cmd_time = instruction['n']  # default case
+        end_search = instruction['n']  # one beyond end
+        if end_search < start_search: end_search += 108
+        for wt in range(start_search, end_search):  # start_search..N-1 inclusive
+            if (wt % 108) == marked_word:
+                if self.verbosity & VERBOSITY_D31_MARKRET:
+                    print("FOUND MARK for ", wt, "/", marked_word)
+                next_cmd_time = marked_word
+                break
 
-        if xt <= xn and xn <= xmark:
-            instruction['next_cmd_word_time'] = instruction['n']
-        else:
-            instruction['next_cmd_word_time'] = mark
-        
+        instruction['next_cmd_word_time'] = next_cmd_time
+
+        if self.verbosity & VERBOSITY_D31_MARKRET:
+            print("\tRTMv0.33: xx-", instruction['time_end'], "  marked_word=", marked_word, " N=", instruction['n'],
+                  " searching:", start_search, "-", end_search - 1, " next_cmd_word_time=",
+                  instruction['next_cmd_word_time'])
+
     def GoToMark(self, instruction):
         instruction['next_cmd_line'] = instruction['ch']
 
@@ -502,7 +470,11 @@ class g15d_d31(G15Cpu_math.g15d_math):
         else:
             self.cpu.mark_time = instruction['loc'] + 1
 
-        print("MARK set: ", instruction['next_cmd_line'], ".", self.cpu.mark_time)
+        cmdLineMapped = cmd_line_map_names[instruction['next_cmd_line']]
+
+        if self.verbosity & VERBOSITY_D31_MARKRET:
+            print("cmdLineMapped", cmdLineMapped)
+            print("MARK set: ", cmdLineMapped + "." + str(self.cpu.mark_time))
 
     def unverified_instruction(self):
         """ Increment unverifiied instuction execution count """

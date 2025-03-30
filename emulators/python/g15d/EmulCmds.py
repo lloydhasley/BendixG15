@@ -17,7 +17,8 @@ from G15Constants import *
 from EmulLogger import *
 from intg15 import intg15
 
-PAUSE_CHECK_INTERVAL = 0.005	# default: 5ms
+
+PAUSE_CHECK_INTERVAL = 0.005        # default: 5ms
 
 
 # noinspection PyPep8
@@ -55,12 +56,12 @@ class EmulCmds:
             ['pause                                   : wait for kybrd input',                  self.cmd_pause],
             ['ptr [mount <filename>]                  : paper tape reader',                     self.cmd_ptr],
             ['quit                                    : quit the g15d emulator',                self.cmd_quit],
+            ['regs                                    : dump regs, M23, part of M19',           self.cmd_regs],
             ['run [-t] <number of instrs>             : run quietly, -1 infinite',              self.cmd_run],
             ['set <macro name> <value>                : set a macro variable',                  self.cmd_set],
             ['status <all>|<block>                    : status',                                self.cmd_status],
             ['switch <sw type> <position>             : typewriter switch <enable,tape,computer>', self.cmd_switch],        
             ['system <linux sys cmd                   : send command to host OS',               self.cmd_system],
-#            ['trace <number of instrs>                : run verbose, -1 infinite',              self.cmd_trace],
             ['type [-e] <typewriter  chars>           : typewriter input',                      self.cmd_type],
             ['verbosity <block name> <level>          : set verbosity bit mask on a block',     self.cmd_verbosity],
             ['verify <drum> <drum address> <sum>      : validate chksum on drum address range', self.cmd_verify]
@@ -69,6 +70,8 @@ class EmulCmds:
         self.fout = sys.stdout
         self.fins = [sys.stdin]
 
+        self.cmd_pause_count = 0
+
     def start(self, files):
         """
         Start the command interpreter
@@ -76,13 +79,11 @@ class EmulCmds:
         :param files:   list of included files to execute at start
         :return:        none
         """
-        print("start files: ", files)
         startlist = []
         for file_name in files:
             startlist.append(['include', file_name])
         startlist.reverse()
         for item in startlist:
-            print("AAAA START ", item)
             self.cmd_include(item)
 
     def cmd_do_from_processor_loop(self):
@@ -121,26 +122,17 @@ class EmulCmds:
         :return:    none
         """
         while True:
-#            if fin == sys.stdin:
-#                print("calling kbhit")
-#                # if keyboard input, is there anything available
-#                if not self.emul.ascii.kbhit():
-#                    continue
+            line = None
             if fin == sys.stdin:
                 if not self.emul.getc.q.empty():
                     line = self.emul.getc.q.get()
             else:
-
                 # we are reading from a file or there is input at the keyboard
                 line = self.get_cmd(fin)
 
             if line is None:
                 print("ERRROR EMPYT LINE")
                 break
-
-            # echo line if not done by system io subsystem
-#            if fin != sys.stdin:
-#                print line
 
             # save the line and execute the command
             self.current_line_buffer = line
@@ -163,27 +155,19 @@ class EmulCmds:
             return
 
         line = line.split('#')[0]
-
-#        ii = line.find('#')
-#        if ii != -1:
-#            if ii > 0:
-#                line = line[:ii]
-#            else:
-#                return
-
         args = line.split()
         if len(args) == 0:
             return
 
         # find number of commands that match first arg
         count = 0
-        l = len(args[0])
-        if l == 0:
+        ll = len(args[0])
+        if ll == 0:
             return
 
         cmd_handler = self.cmd_help
         for cmd_name, cmd_fcn in self.cmd_table:
-            if args[0] == cmd_name[:l]:
+            if args[0] == cmd_name[:ll]:
                 count += 1
                 cmd_handler = cmd_fcn
 
@@ -199,14 +183,8 @@ class EmulCmds:
         # will execute command, but first expand macros
         args = self.expand_macro(args)
 
-        # before we execute a command, we need to stop the CPU
-#        self.emul.request_lock(SIM_REQUEST_LOCK)
-
         # execute the command
         cmd_handler(args)
-
-        # release CPU
- #       self.emul.request_lock(SIM_REQUEST_UNLOCK)
 
     def get_cmd(self, fin):
         """
@@ -225,15 +203,6 @@ class EmulCmds:
             return None
 
         line = line.strip()
-
-        # strip any trailing EOL characters
-#        loc = line.find('\n')
-#        if loc != -1:
-#            line = line[:loc]
-#        loc = line.find('\r')
-#        if loc != -1:
-#            line = line[:loc]
-
         if fin != sys.stdin:
             print(line)
 
@@ -291,10 +260,10 @@ class EmulCmds:
         return args
         
     def cmds_pause(self):
-        " monitor pause from pause command"
+        """ monitor pause from pause command """
 
         if self.g15.cpu.sw_compute == "center" or \
-	            (self.g15.cpu.sw_compute == "center" and not self.g15.cpu.sw_compute_bp_enable):
+                (self.g15.cpu.sw_compute == "center" and not self.g15.cpu.sw_compute_bp_enable):
             self.cmd_pause_count = 0
 
         while self.cmd_pause_count:
@@ -329,16 +298,18 @@ class EmulCmds:
             return
         track, start, stop = self.g15.drum.address_decode(subargs)
 
-        print('track = ',track, 'start=', start, 'stop=', stop)
+        self.cmd_dd_helper(track, start, stop)
+
+    def cmd_dd_helper(self, track, start, stop):
+        print('\ntrack = ', track, 'start=', start, 'stop=', stop)
 
         if track < 0:
-                self.help('dd')
-                return
+            self.help('dd')
+            return
 
         for wordtime in range(start, stop + 1):
             signmag = self.g15.drum.read(track, wordtime)
             outstr = signmag_to_str(signmag)
-            outstr += ' ' + hex(self.g15.drum.read(track, wordtime))
 
             print(' %0d' % track, '%03d' % wordtime, ': ', outstr)
 
@@ -346,8 +317,8 @@ class EmulCmds:
     def cmd_echo(args):
         """ Basic linux echo command """
 
-        l = len(args)
-        for i in range(l):
+        ll = len(args)
+        for i in range(ll):
             print('%3s: ' % i, args[i])
 
     def cmd_exit(self, _args):
@@ -357,18 +328,18 @@ class EmulCmds:
     def cmd_help(self, args):
         """ print all lines that begin w arg1 """
 
-        l = len(args)
-        if l > 1:
+        ll = len(args)
+        if ll > 1:
             allflag = 0
             cmp_str = args[1]
-            l = len(args[1])
+            ll = len(args[1])
         else:
             allflag = 1
             cmp_str = ''
-            l = 1
+            ll = 1
 
         for cmd_name, cmd_fcn in self.cmd_table:
-            if (cmp_str == cmd_name[:l]) or allflag:
+            if (cmp_str == cmd_name[:ll]) or allflag:
                 print(cmd_name)
 
     def cmd_include(self, args):
@@ -387,9 +358,7 @@ class EmulCmds:
             return
 
         self.fins.append(fin)
-        print("fins=", self.fins)
-#        self.cmd_do(fin)
-#        fin.close()
+        # print("fins=", self.fins)
 
     def cmd_music(self, args):
         if len(args) < 2:
@@ -413,12 +382,9 @@ class EmulCmds:
         if ll != 2:
             self.help("pause")
             return
-			
-#        self.emul.cmd_pause_count = int(args[1], 0)
+
         self.emul.cmd_pause_count = intg15(args[1], 0)
-
         return
-
 
     def cmd_ptr(self, args):
         """
@@ -458,7 +424,27 @@ class EmulCmds:
         if self.verbosity & 1:
             print('entering quit')
         self.emul.quit()
-        
+
+    def cmd_regs(self, _args):
+        """ dump registers """
+        ar = self.g15.drum.read(AR, 0, 0)
+        reg_pn = (self.g15.drum.read(PN, 1, 0) << 29) | self.g15.drum.read(PN, 0, 0)
+        reg_id = (self.g15.drum.read(ID, 1, 0) << 29) | self.g15.drum.read(ID, 0, 0)
+        reg_mq = (self.g15.drum.read(MQ, 1, 0) << 29) | self.g15.drum.read(MQ, 0, 0)
+        ar_s = signmag_to_str(ar)
+        mq_s = signmag_to_str(reg_mq, str_width=16)
+        id_s = signmag_to_str(reg_id, str_width=16)
+        pn_s = signmag_to_str(reg_pn, str_width=16)
+
+        print("\tAR: ", ar_s)
+        print("\tMQ: ", mq_s)
+        print("\tID: ", id_s)
+        print("\tPN: ", pn_s)
+
+        self.cmd_dd_helper(23, 0, 3)
+        self.cmd_dd_helper(19, 0, 15)
+        self.cmd_dd_helper(19, 100, 107)
+
     def cmd_run(self, args):
         arg_parser = argparse.ArgumentParser(prog="run")
         
@@ -474,22 +460,16 @@ class EmulCmds:
         # trace        1
         self.g15.cpu.trace_flag = cmd_args.trace
         
-        print("run, iterations=", cmd_args.iterations)
-
-#        self.emul.request_lock(SIM_REQUEST_LOCK)
+        # print("run, iterations=", cmd_args.iterations)
 
         self.emul.number_instructions_to_execute = cmd_args.iterations
         self.g15.cpu.halt_status = 0  # remove machine from Halt
 
-#        self.emul.request_lock(SIM_REQUEST_UNLOCK)
-
-
     def cmd_set(self, args):
         """ set macro variables to control emulation  """
 
-        ll = len(args)
-
         # list known macros
+        ll = len(args)
         if ll == 1:
             for var, value in self.syms.items():
                 print('%25s:' % var, ' %s' % value)
@@ -534,13 +514,11 @@ class EmulCmds:
                     pass
         if flag:
             print("Unknown block or block does not have status option: ", args[1])
-			
+
         return
         
     def cmd_switch(self, args):   
         # format: switch <id> <pos>
-#        print("sw: ", args)
-  
         ll = len(args)
         if ll == 1:
             print("sw  enable: ", self.g15.cpu.sw_enable)
@@ -596,12 +574,8 @@ class EmulCmds:
         if len(args) < 1:
             self.help("type")
 
-        print("type: total_revolutions: ", self.g15.cpu.total_revolutions)
+        # print("type: total_revolutions: ", self.g15.cpu.total_revolutions)
         self.g15.typewriter.type(args[1])
-
-#        self.emul.request_lock(SIM_REQUEST_LOCK)
-#        self.emul.number_instructions_to_execute = 2
-#        self.emul.request_lock(SIM_REQUEST_UNLOCK)
 
     def cmd_verbosity(self, args):
         """ Control the emulator debug verbosity of the various emulator blocks/pieces """
@@ -612,7 +586,6 @@ class EmulCmds:
             'drum': self.g15.drum,
             'emul': self.emul,
             'ptr': self.g15.ptr
-        #cmd_verbosity
         }
         if ll == 1:
             for block_name, handle in known_blocks.items():
@@ -625,7 +598,6 @@ class EmulCmds:
 
         if args[1] in known_blocks:
             handle = known_blocks[args[1]]
-            #level = int(args[2], 0)
             level = intg15(args[2], 0)
             handle.verbosity = level
 
@@ -681,8 +653,7 @@ class EmulCmds:
             sum_target_signmag = str_to_signmag(sum_target_str)
 
             if sum_target_signmag != sum_signmag:
-                self.emul.increment_error_count('chksum error: target=' + sum_target_str +
-                                    ' drum=' + sum_signmag_str)
+                self.emul.increment_error_count('chksum error: target=' + sum_target_str + ' drum=' + sum_signmag_str)
             else:
                 print('Chksum is correct: ', sum_target_str)
 
@@ -702,7 +673,7 @@ class EmulCmds:
                 print('Correct io status detectec: ', str_io_status)
             else:
                 self.emul.increment_error_count('iostatus error: expected=' + expected_status_str +
-                            ' actual=' + str_io_status)
+                                                ' actual=' + str_io_status)
 
         elif args[1] == 'pc':
             """ Display/Change the 'program counter' (next instruction location) """
@@ -727,7 +698,7 @@ class EmulCmds:
                 return
 
             for ii in range(len(subargs)):
-                subargs[ii] = intg15(subargs[ii],0)
+                subargs[ii] = intg15(subargs[ii], 0)
 
             flag = 1
             for i in range(2):
@@ -738,7 +709,8 @@ class EmulCmds:
                 print('next instruction address matches: ', args[2])
             else:
                 self.emul.increment_error_count(' next instruction address does not match, expected: ' + args[2] +
-                            ' was: ' + str(next_instr_address[0]) + ':' + str(next_instr_address[1]))
+                                                ' was: ' + str(next_instr_address[0]) + ':'
+                                                + str(next_instr_address[1]))
 
             return
 
@@ -767,7 +739,7 @@ class EmulCmds:
                 print('correct: flags match')
             else:
                 self.emul.increment_error_count(' flags do not match, expected: ' + args[2] +
-                            ' was: ' + hex(flags))
+                                                ' was: ' + hex(flags))
 
         elif args[1] == 'bell':
             """ Display/Verify number of bell rings """
@@ -776,7 +748,7 @@ class EmulCmds:
                 self.help('verify')
                 return
 
-            bell_count_expected = intg15(args[2],0)
+            bell_count_expected = intg15(args[2], 0)
 
             bell_count = self.g15.cpu.bell_count  # number of times that bell has been rung
 
@@ -784,7 +756,7 @@ class EmulCmds:
                 print('correct: bell count matches')
             else:
                 self.emul.increment_error_count(' bell count does not match, expected: ' + args[2] +
-                            ' was: ' + hex(bell_count))
+                                                ' was: ' + hex(bell_count))
 
         elif args[1] == 'error':
             """ Verify number of emulator validation errors detected """
@@ -794,7 +766,6 @@ class EmulCmds:
 
             expected_errors = intg15(args[2])
             self.emul.check_error_count(expected_errors)
-
             return
 
         else:

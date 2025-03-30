@@ -1,7 +1,6 @@
 """
-G15D Early Bus implementation
-
-
+Verilog Trace file generation
+(used to compare results of various emulators)
 """
 
 import sys
@@ -24,13 +23,16 @@ class g15d_log:
             try:
                 self.fout = open(filename, "w")
                 print('Verilog vtrace file opened: ', filename)
+                cpu.vtrace_enabled = True
             except IOError:
-                print('Error, Cannot open execution log file: ', filename)
-                self.fout = sys.stdout
+                print('Error, Cannot open Verilog vtrace file: ', filename)
+                sys.exit(1)
 
         self.header = "   ICNT:     TIME : TR  :   INSTR  :TRK.RC:DEF: T: N:C: S: D:BP:      EB:      IB:      "
-#       self.header += "LB:      AR:              PN:              ID:              MQ:FO:IP:IOSTATUS:      TIME"
         self.header += "LB:      AR:          MQ(24):          ID(25):          PN(26):FO:IP:IOSTATUS : DESCRIPTION"
+
+        if stdout_enable:
+            cpu.vtrace_enabled = True
 
     def close(self):
         if self.fout != sys.stdout:
@@ -38,14 +40,16 @@ class g15d_log:
 
     def logger(self, time_start, time_end, early_bus, intermediate_bus, late_bus):
         # determine if we are idling waiting for IO complete
+        instruction = self.cpu.instruction
+
         if self.g15.iosys.status == IO_STATUS_READY:
             status = 1
             self.io_active_count = 0
-        else:
+
+        elif instruction['s'] == 28 and instruction['d'] == 31:
             status = 0
             self.io_active_count += 1
-            if self.io_active_count > 3:
-                return
+
         status_str = "%8s" % io_status_str[self.g15.iosys.status]
 
         instruction = self.cpu.instruction
@@ -53,12 +57,13 @@ class g15d_log:
         str1 = "%7d" % self.cpu.total_instruction_count
         str2 = instr_dec_hex_convert(instruction['loc'])
         str3 = instr_dec_hex_convert(self.cpu.word_time_rollover(time_start))
-        str4 = instr_dec_hex_convert(self.cpu.word_time_rollover(time_end))
+
+        time_ending = time_end
+        str4 = instr_dec_hex_convert(self.cpu.word_time_rollover(time_ending))
         if instruction['cmd_acc']:
             str5 = "ACC"
         else:
             str5 = "%3d" % cmd_line_map[instruction['cmd_line']]
-        #str6 = ' ' + instr_dec_hex_convert(instruction['loc']) + ' '
 
         instr = self.cpu.instruction['instr']
         if self.g15.signenable:
@@ -68,28 +73,25 @@ class g15d_log:
 
         str22 = "%10s" % self.g15.drum.time_get_str()
 
-        print("AAAA" + str22 + "BBBB")
-
-#        lstr1 = str1 + ":" + str22 + ":" + str5 + ":" + str2 + ":" + str3 + "-" + str4 + ":" + str7 + ':'
-        lstr1 = str1 + ":" + str22 + ":" + str3 + "-" + str4 + ": " + str7 + ' : ' + str5 + ':' + str2 + ':'
+        lstr1 = str1 + ":" + str22 + ":" + str3 + "-" + str4 + ": " + str7 + ' :' + str5 + ':' + str2 + ':'
 
         if instruction['deferred']:
             str8 = "  w"
         else:
             str8 = "  u"
-#        if instruction['deferred']:
-#            str8 = "  D"
-#        else:
-#            str8 = "  I"
 
         str9 = instr_dec_hex_convert(instruction['t'])
         str10 = instr_dec_hex_convert(instruction['n'])
         str11 = "%1d" % instruction['ch']
         str12 = instr_dec_hex_convert(instruction['s'])
         str13 = instr_dec_hex_convert(instruction['d'])
-        str14 = "%2d" % instruction['bp']
+        # str14 = "%2d" % instruction['bp']
+        if instruction['bp']:
+            str14 = '-  '
+        else:
+            str14 = '   '
 
-        lstr2 = str8 + "." + str9 + "." + str10 + "." + str11 + "." + str12 + "." + str13 + "." + str14 + ":"
+        lstr2 = str8 + "." + str9 + "." + str10 + "." + str11 + "." + str12 + "." + str13  + str14 + ":"
 
         ar = self.g15.drum.read(AR, 0, 0)
         reg_pn = (self.g15.drum.read(PN, 1, 0) << 29) | self.g15.drum.read(PN, 0, 0)
@@ -116,7 +118,6 @@ class g15d_log:
         str20a = "%2s" % self.cpu.flop_ip
 
         str21 = status_str
-
 
         if instruction['dspecial']:
             str23 = instruction['dspecial']

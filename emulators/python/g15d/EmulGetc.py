@@ -11,46 +11,48 @@
 
 # import threading
 import queue
-import readchar
+#import readchar
 import sys
 
 
 class CharIO:
-    def __init__(self):
+    def __init__(self, emul):
+        self.emul = emul
+
         self.buffer = ""
         self.q = queue.Queue()
         self.q_enable = queue.Queue()
-
-#    def thread_start(self):
-#        # daemon, will stop automatically
-#        self.thread_c = threading.Thread(target=self.thread_getchars, daemon=True)
-#        self.thread_c.start()
-#
-#    def thread_end(self):
-#        pass
 
     def thread_getchars(self):
         # get a character from stdin
 
         self.buffer = ""
-
         while True:
             # k = readchar.readchar()
             # readkey on escape waits for next char,
             #   we shall use this property for the enable switch
             # all other keys strokes immediately are available
-            k = readchar.readkey()
-            if len(k) > 1:  # extended command
-                print("mesg0=%x" % ord(k[0]))
-                if k[0] != '\x1b':
+            if False:
+                k = readchar.readkey()
+                if len(k) > 1:  # extended command
+                    print("mesg0=%x" % ord(k[0]))
+                    if k[0] != '\x1b':
+                        continue
+                    enable_cmd = k[1]
+                    print("placing onto enable queue: %s" % enable_cmd)
+                    self.q_enable.put(enable_cmd)
                     continue
-                enable_cmd = k[1]
-                print("placing onto enable queue: %s" % enable_cmd)
-                self.q_enable.put(enable_cmd)
-                continue
+            else:
+                while True:
+                    k = self.emul.ascii.kbhit()
+                    if k:
+                        break
+                    if self.emul.runflag == 0:
+                        return
 
             # have straight ASCII char
 
+            # process delete/backspace
             if k == '\b' or k == '\xff':
                 if len(self.buffer) > 0:
                     self.buffer = self.buffer[:-1]

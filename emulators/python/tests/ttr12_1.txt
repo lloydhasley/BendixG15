@@ -16,11 +16,12 @@ switch compute off      # note compute or run, do not use both
 
 
 # mount test routines and turn machine on
-ptr mount TAPES/lcm/ttr12.pti
+#ptr mount TAPES/lcm/ttr12.pti
+ptr mount ttr12_lcm.pti
 button dc on
 
 # wait for typewrite prompt
-run 46
+run 100
 dd CN:0:107
 
 # select test routine #1
@@ -32,3 +33,5 @@ type 0000002ts
 
 
 run 2500
+
+quit

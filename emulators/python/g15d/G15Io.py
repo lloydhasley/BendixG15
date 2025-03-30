@@ -23,14 +23,13 @@ class G15Io:
     def __init__(self, g15, Verbosity=0):
         self.g15 = g15
         self.verbosity = Verbosity
-        self.verbosity |= VERBOSITY_IO_SLOW_OUT
 
         self.devices = [0] * 16
         self.device_names = {}
 
         self.status = IO_STATUS_READY         # set io subsystem to Ready
         self.sign = 0
-        
+
         self.slow_out_count = 0
 
         self.g15_format = 0
@@ -40,6 +39,9 @@ class G15Io:
         self.enable_zero_suppress = 0
         self.format_track = 0
         self.words_to_print = 0
+        self.os = 0     # sign flag
+
+        self.format_i = 0       # pep8 happiness
 
     def attach(self, identifier, device, name):
         if identifier >= MAXIODEVICES or identifier < 0:
@@ -50,14 +52,14 @@ class G15Io:
         self.device_names = name
 
     def set_status(self, status):
-        if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-            print("set_status=", status)
-
         if status == IO_STATUS_READY:
+            if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
+                print('output=', self.outstr)
+
             self.status = IO_STATUS_READY
 
         elif status == IO_STATUS_IN_TYPEWRITER:
-            if status == IO_STATUS_READY:
+            if self.status == IO_STATUS_READY:
                 self.sign = 0
             self.status = IO_STATUS_IN_TYPEWRITER
             
@@ -97,24 +99,28 @@ class G15Io:
             return
 
         for data in in_data:
-            print("slowin: data=%x" % data, " instr=", self.g15.cpu.total_instruction_count,
-                  '\t[', code_to_ascii[data]['ascii'], ']')
+            if self.verbosity & VERBOSITY_IO_DETAIL:
+                print("slowin: data=%x" % data, " instr=", self.g15.cpu.total_instruction_count,
+                      '\t[', code_to_ascii[data]['ascii'], ']')
 
             if self.verbosity & VERBOSITY_IO_DETAIL:
                 print('m23 data = ', mag_to_str(data))
                 self.g15.drum.display(M23, 0, 4)
 
             if data & G15_DIGIT:
-                print('m23 data at digit entry')
-                self.g15.drum.display(M23, 0, 4)
+                if self.verbosity & VERBOSITY_IO_DETAIL:
+                    print('m23 data at digit entry')
+                    self.g15.drum.display(M23, 0, 4)
 
                 # data nibble
                 self.g15.drum.precess(M23, 4)
 
-                print('m23 data after precess = ', mag_to_str(data))
-                self.g15.drum.display(M23, 0, 4)
-                printg15(" data=%x" % data)
+                if self.verbosity & VERBOSITY_IO_DETAIL:
+                    print('m23 data after precess = ', mag_to_str(data))
+                    self.g15.drum.display(M23, 0, 4)
 
+                if self.verbosity & VERBOSITY_IO_DETAIL:
+                    printg15(" data=%x" % data)
 
                 m23_data = self.g15.drum.read(M23, 0)
                 m23_data |= data & 0xf
@@ -150,11 +156,12 @@ class G15Io:
             elif data == G15_RELOAD:
                 self.reload()
 
-                print("TYPEIN RELOAD")
-                print("M23:")
-                self.g15.drum.display(M23, 0, 4)
-                print("M19:")
-                self.g15.drum.display(M19, 0, 8)
+                if self.verbosity & VERBOSITY_IO_DETAIL:
+                    print("TYPEIN RELOAD")
+                    print("M23:")
+                    self.g15.drum.display(M23, 0, 4)
+                    print("M19:")
+                    self.g15.drum.display(M19, 0, 8)
 
                 continue
                 
@@ -163,11 +170,12 @@ class G15Io:
                     self.reload()
                 self.set_status(IO_STATUS_READY)
 
-                print("TYPEIN STOP")
-                print("M23:")
-                self.g15.drum.display(M23, 0, 4)
-                print("M19:")
-                self.g15.drum.display(M19, 0, 8)
+                if self.verbosity & VERBOSITY_IO_DETAIL:
+                    print("TYPEIN STOP")
+                    print("M23:")
+                    self.g15.drum.display(M23, 0, 4)
+                    print("M19:")
+                    self.g15.drum.display(M19, 0, 8)
 
                 continue
 
@@ -187,9 +195,6 @@ class G15Io:
             j = 107 - i
             data_word = self.g15.drum.read(M19, j - 4)
             self.g15.drum.write(M19, j, data_word)
-
-#            if self.verbosity & VERBOSITY_IO_DETAIL:
-#                print('moving from ', j - 4, ' to ', j)
 
         # copy M23 to lower 4 words of M19
         for i in range(4):
@@ -222,12 +227,7 @@ class G15Io:
 
         self.slow_out_format(device, data_track)
 
-#        outstr = self.slow_out_format(device, data_track)
-#        if device == DEV_IO_TYPE:
-#            print("outstr=", outstr)
-#            self.g15.typewriter.write(outstr)
-#        else:
-#            print('Error: unknown IO device, device id: ', device)
+        self.os = 0
 
     #######################################
     #
@@ -241,13 +241,28 @@ class G15Io:
     
     def slow_out_doit(self):
         # is slow out active?
+        end_flag = 0
 
         if self.slow_out_count == 0:
             return
-            
-        #print("slowoutcount=", self.slow_out_count)
 
-        if self.slow_out_count == 2:
+        if self.status == IO_STATUS_READY:
+            if self.verbosity & VERBOSITY_IO_DETAIL:
+                print("slow_out_doit. check at icnt", self.g15.cpu.total_instruction_count)
+            self.slow_out_count = 0
+            return
+
+        if self.verbosity & VERBOSITY_IO_DETAIL:
+            print("slowoutcount=", self.slow_out_count, " drum=", self.g15.drum.revolution_get())
+
+        # accumulate sign bit
+        #   any sign bit sets sign, outputting a character resets it
+        m19 = self.g15.drum.read(self.data_track, 107)  # note: will also work for AR
+        self.os = m19 & 1
+
+        if self.slow_out_count == 1:
+            self.format_i = 0
+
             # gather format word pieces and assemble
             self.g15_format = self.g15.drum.read(self.format_track, 3)
             self.g15_format <<= 29
@@ -256,7 +271,9 @@ class G15Io:
             self.g15_format |= self.g15.drum.read(self.format_track, 1)
             self.g15_format <<= 29
             self.g15_format |= self.g15.drum.read(self.format_track, 0)
-    
+
+            self.outstr = []
+
             if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                 print('format= 0x%x039x' % self.g15_format)
     
@@ -266,124 +283,123 @@ class G15Io:
                 print('format1:= 0x%08x' % self.g15.drum.read(self.format_track, 1))
                 print('format0:= 0x%08x' % self.g15.drum.read(self.format_track, 0))
 
-        if self.slow_out_count == 2 or self.slow_out_count == 3:
-            end_flag = 0
-            zero_suppress = self.enable_zero_suppress
-            while not end_flag:
-                for format_i in range(0, 38):
-    
-                    # extract the format code
-                    shift_amt = 113 - format_i * 3
-                    format_code = self.g15_format >> shift_amt
-                    format_code &= 7
-    
-                    if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                        print('format_i=', format_i, ' format_code=', format_code)
-                        if self.data_track == 19:
-                            m19 = self.g15.drum.read(self.data_track, 107)
-                            print(' m19_107: s=', m19 & 1, ' mag=%08x' % (m19 >> 1))
-    
-                    if format_code == FORMAT_DIGIT:
-                        data = self.g15.drum.read(self.data_track, 107)
-                        self.g15.drum.precess(self.data_track, 4)
-    
-                        nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
-                        if zero_suppress and nibble == 0:
-                            self.outstr.append(G15_SPACE)
-                        else:
-                            self.outstr.append(G15_DIGIT | nibble)
-                            #
-                        if nibble != 0:
-                            zero_suppress = 0
-    
-                    elif format_code == FORMAT_SIGN:
-                        # we ASSUME SIGN bit format is aligned to word boundry,  will
-                        # fail if not.
-                        word = self.g15.drum.read(self.data_track, 107)
-                        if word & 1:
-                            self.outstr.append(G15_MINUS)
-                        else:
-                            self.outstr.append(G15_SPACE)
+            self.zero_suppress = self.enable_zero_suppress
 
-                        if self.slow_out_count == 2:
-                            end_flag = 1
-                            
-                    elif format_code == FORMAT_CR:
-                        self.outstr.append(G15_CR)
-                        zero_suppress = self.enable_zero_suppress
-                        self.g15.drum.precess(self.data_track, 1)
-    
-                    elif format_code == FORMAT_TAB:
-                        self.outstr.append(G15_TAB)
-                        zero_suppress = self.enable_zero_suppress
-                        self.g15.drum.precess(self.data_track, 1)
-    
-                    elif format_code == FORMAT_STOP:
-                        # if M19, check if empty
-                        zero_suppress = self.enable_zero_suppress
-                        if self.data_track == 19:
-                            zero_flag = 1
-                            for i in range(108):
-                                w = self.g15.drum.read(19, i)
-                                if w != 0:
-                                    zero_flag = 0
-                                    break  # inner loop break
-    
-                            # precess is done above
-                            if zero_flag == 1:
-                                self.outstr.append(G15_STOP)
-                                if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                                    print('format complete')
-                                    print('output=', self.outstr)
-                                end_flag = 1       # signal break of outer loop
-                                break  # inner loop break
-                            else:
-                                self.outstr.append(G15_RELOAD)
-                                break  # inner loop break, repeat outer loop, reset format
-                        else:
-                            # AR being output
-                            self.outstr.append(G15_STOP)
-                            if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                                print('format complete')
-                                print('output=', self.outstr)
-                            end_flag = 1
-                            break  # inner loop break
-    
-                    elif format_code == FORMAT_RELOAD:
-                        zero_suppress = self.enable_zero_suppress
-                        # not supported, in real g15, causes format to recycle
-                        print('Unverified: reload format character has not been tested in the emulator')
-                        self.g15.cpu.unknown_instruction_count += 1
-                        break
-    
-                    elif format_code == FORMAT_WAIT:
-                        # outstr.append(G15_WAIT)
-                        self.g15.drum.precess(self.data_track, 4)
-                        zero_suppress = self.enable_zero_suppress
-    
-                    elif format_code == FORMAT_PERIOD:
-                        self.outstr.append(G15_PERIOD)
-                        zero_suppress = 0
-    
-                    else:
-                        print('Error:Unknown output format code: ', format)
-                        self.g15.cpu.unknown_instruction_count += 1
-                        break
-
-        self.slow_out_count += 1
         if self.slow_out_count == 3:
+            end_flag = 0
+
+            # extract the format code
+            shift_amt = 113 - self.format_i * 3
+            format_code = self.g15_format >> shift_amt
+            format_code &= 7
+
+            if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                print('format_i=', self.format_i, ' format_code=', format_code)
+                if self.data_track == 19:
+                    m19 = self.g15.drum.read(self.data_track, 107)
+                    print(' m19_107: s19=', m19 & 1, ' s=', self.os, ' mag=%08x' % (m19 >> 1))
+
+            # format 0-37
+            # advance format_i
+            self.format_i += 1
+            if self.format_i == 38:
+                self.format_i = 0
+
+            if format_code == FORMAT_DIGIT:
+                data = self.g15.drum.read(self.data_track, 107)
+                self.g15.drum.precess(self.data_track, 4)
+
+                nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
+                if self.zero_suppress and nibble == 0:
+                    self.outstr.append(G15_SPACE)
+                else:
+                    self.outstr.append(G15_DIGIT | nibble)
+                    #
+                if nibble != 0:
+                    self.zero_suppress = 0
+
+            elif format_code == FORMAT_SIGN:
+                # we ASSUME SIGN bit format is aligned to word boundry,  will
+                # fail if not.
+                if self.os:
+                    self.outstr.append(G15_MINUS)
+                else:
+                    self.outstr.append(G15_SPACE)
+
+            elif format_code == FORMAT_CR:
+                self.outstr.append(G15_CR)
+                self.zero_suppress = self.enable_zero_suppress
+                self.g15.drum.precess(self.data_track, 1)
+
+            elif format_code == FORMAT_TAB:
+                self.outstr.append(G15_TAB)
+                self.zero_suppress = self.enable_zero_suppress
+                self.g15.drum.precess(self.data_track, 1)
+
+            elif format_code == FORMAT_STOP:
+                # if M19, check if empty
+                self.zero_suppress = self.enable_zero_suppress
+                if self.data_track == 19:
+                    zero_flag = 1
+                    for i in range(108):
+                        w = self.g15.drum.read(19, i)
+                        if w != 0:
+                            zero_flag = 0
+                            break  # inner loop break
+
+                    # precess is done above
+                    if zero_flag == 1:
+                        self.outstr.append(G15_STOP)
+                        if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                            print('format complete')
+                            print('output=', self.outstr)
+                        end_flag = 1       # signal break of outer loop
+                    else:
+                        self.outstr.append(G15_RELOAD)
+                        self.format_i = 0
+                else:
+                    # AR being output
+                    self.outstr.append(G15_STOP)
+                    if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                        print('format complete')
+                        print('output=', self.outstr)
+                    end_flag = 1
+
+            elif format_code == FORMAT_RELOAD:
+                self.zero_suppress = self.enable_zero_suppress
+                # not supported, in real g15, causes format to recycle
+                self.outstr.append(G15_RELOAD)
+                self.format_i = 0
+
+            elif format_code == FORMAT_WAIT:
+                self.outstr.append(G15_WAIT)
+                self.g15.drum.precess(self.data_track, 4)
+                self.zero_suppress = self.enable_zero_suppress
+
+            elif format_code == FORMAT_PERIOD:
+                self.outstr.append(G15_PERIOD)
+                self.zero_suppress = 0
+
+            else:
+                print('Error:Unknown output format code: ', format)
+                self.g15.cpu.unknown_instruction_count += 1
+
+        if self.slow_out_count == 3:
+            self.slow_out_count = 2
+        else:
+            self.slow_out_count += 1
+
+        if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+            print_list_hex("outstr=", self.outstr)
+
+        if end_flag:
             if self.device == DEV_IO_TYPE:
-                print("outstr=", self.outstr)
+                if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                    print("outstr=", self.outstr)
+                self.os = 0
                 self.g15.typewriter.write(self.outstr)
                 self.set_status(IO_STATUS_READY)
             self.slow_out_count = 0     # all done
-
-            if self.data_track == 19:
-                for i in range(108):
-                    self.g15.drum.write(19, i, 0)
-            else:
-                self.g15.drum.write(28, 0, 0)
-
 
     def slow_out_format(self, device, data_track):
         self.data_track = data_track
@@ -414,160 +430,11 @@ class G15Io:
             
         # print("AAA slowoutcount=", self.slow_out_count)
         return self.outstr
-
-    # single cycle (no pipelining, works for everything EXCEPT intercom)
-    def slow_out_format_old(self, device, data_track):
-        outstr = []
-
-        if device == DEV_IO_TYPE:
-            enable_zero_suppress = 1
-        else:
-            enable_zero_suppress = 0
-
-        if data_track == AR:  # AR
-            words_to_print = 1
-            format_track = 3
-        elif data_track == M19:  # M19
-            words_to_print = 108
-            format_track = 2
-        else:
-            print('Error: Illegal data track specified: %d', data_track)
-            self.g15.cpu.unknown_instruction_count += 1
-            format_track = 2
-
-        if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-            print('slowout: data_track=', data_track, ' format_track=', format_track)
-
-        # gather format word pieces and assemble
-        g15_format = self.g15.drum.read(format_track, 3)
-        g15_format <<= 29
-        g15_format |= self.g15.drum.read(format_track, 2)
-        g15_format <<= 29
-        g15_format |= self.g15.drum.read(format_track, 1)
-        g15_format <<= 29
-        g15_format |= self.g15.drum.read(format_track, 0)
-
-        if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-            print('format= 0x%x039x' % g15_format)
-
-        if self.verbosity & VERBOSITY_IO_FORMAT:
-            print('format3:= 0x%08x' % self.g15.drum.read(format_track, 3))
-            print('format2:= 0x%08x' % self.g15.drum.read(format_track, 2))
-            print('format1:= 0x%08x' % self.g15.drum.read(format_track, 1))
-            print('format0:= 0x%08x' % self.g15.drum.read(format_track, 0))
-
-        end_flag = 0
-        zero_suppress = enable_zero_suppress
-        while not end_flag:
-            for format_i in range(0, 38):
-
-                # extract the format code
-                shift_amt = 113 - format_i * 3
-                format_code = g15_format >> shift_amt
-                format_code &= 7
-
-                if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                    print('format_i=', format_i, ' format_code=', format_code)
-                    if data_track == 19:
-                        m19 = self.g15.drum.read(data_track, 107)
-                        print(' m19_107: s=', m19 & 1, ' mag=%08x' % (m19 >> 1))
-
-                if format_code == FORMAT_DIGIT:
-                    data = self.g15.drum.read(data_track, 107)
-                    self.g15.drum.precess(data_track, 4)
-
-                    nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
-                    if zero_suppress and nibble == 0:
-                        outstr.append(G15_SPACE)
-                    else:
-                        outstr.append(G15_DIGIT | nibble)
-                        #
-                    if nibble != 0:
-                        zero_suppress = 0
-
-                elif format_code == FORMAT_SIGN:
-                    # we ASSUME SIGN bit format is aligned to word boundry,  will
-                    # fail if not.
-                    word = self.g15.drum.read(data_track, 107)
-                    if word & 1:
-                        outstr.append(G15_MINUS)
-                    else:
-                        outstr.append(G15_SPACE)
-
-                elif format_code == FORMAT_CR:
-                    outstr.append(G15_CR)
-                    zero_suppress = enable_zero_suppress
-                    self.g15.drum.precess(data_track, 1)
-
-                elif format_code == FORMAT_TAB:
-                    outstr.append(G15_TAB)
-                    zero_suppress = enable_zero_suppress
-                    self.g15.drum.precess(data_track, 1)
-
-                elif format_code == FORMAT_STOP:
-                    # if M19, check if empty
-                    zero_suppress = enable_zero_suppress
-                    if data_track == 19:
-                        zero_flag = 1
-                        for i in range(108):
-                            w = self.g15.drum.read(19, i)
-                            if w != 0:
-                                zero_flag = 0
-                                break  # inner loop break
-
-                        # precess is done above
-                        if zero_flag == 1:
-                            outstr.append(G15_STOP)
-                            if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                                print('format complete')
-                                print('output=', outstr)
-                            end_flag = 1       # signal break of outer loop
-                            break  # inner loop break
-                        else:
-                            outstr.append(G15_RELOAD)
-                            break  # inner loop break, repeat outer loop, reset format
-
-                    else:
-                        # AR being output
-                        outstr.append(G15_STOP)
-                        if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                            print('format complete')
-                            print('output=', outstr)
-                        end_flag = 1
-                        break  # inner loop break
-
-                elif format_code == FORMAT_RELOAD:
-                    zero_suppress = enable_zero_suppress
-                    # not supported, in real g15, causes format to recycle
-                    print('Unverified: reload format character is not tested in the emulator')
-                    self.g15.cpu.unknown_instruction_count += 1
-                    break
-
-                elif format_code == FORMAT_WAIT:
-                    # outstr.append(G15_WAIT)
-                    self.g15.drum.precess(data_track, 4)
-                    zero_suppress = enable_zero_suppress
-
-                elif format_code == FORMAT_PERIOD:
-                    outstr.append(G15_PERIOD)
-                    zero_suppress = 0
-
-                else:
-                    print('Error:Unknown output format code: ', format)
-                    self.g15.cpu.unknown_instruction_count += 1
-                    break
-
-        # return the string of characters (g15 encoded) to output
-        return outstr
-
     #
     # convert G15 io tape codes to typewriter outputs
     #   includes ASCII conversionsts
+
     def io_2_ascii(self, data_out):
-
-        hex2ascii = ['0', '1', '2', '3', '4', '5', '6',
-                     '7', '8', '9', 'u', 'v', 'w', 'x', 'y', 'z']
-
         if self.verbosity & VERBOSITY_IO_DETAIL:
             print('L2Str: t data_out=', data_out)
 
@@ -583,6 +450,7 @@ class G15Io:
                 char = '\t'
             elif data == G15_SPACE:
                 char = ' '
+#                char = '*'  # temporary
             elif data == G15_PERIOD:
                 char = '.'
             else:

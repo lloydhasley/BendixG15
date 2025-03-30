@@ -1,4 +1,4 @@
-'''
+"""
 low-level support routines, that are potentially useful in multiple places
 provided routines are:
 
@@ -13,7 +13,7 @@ str2value(str)
 
 str2word(str)
         take a signed string and return a 29-bit word (as found in the drum)
-'''
+"""
 
 from G15Constants import *
 
@@ -28,14 +28,6 @@ cmd_line_map = [0, 1, 2, 3, 4, 5, 19, 23]
 
 IO_DEVICE_TYPEWRITER = 1
 IO_DEVICE_PAPER_TAPE = 2
-
-if False:
-    IO_STATUS_READY = 0x10
-    IO_STATUS_PT_REV1 = 0x06
-    IO_STATUS_PT_REV2 = 0x07
-    IO_STATUS_TYPE_AR = 0x08
-    IO_STATUS_TYPE_M19 = 0x09
-    IO_STATUS_TYPE_IN = 0x0c
 
 
 # dictionary of ascii to 5-level code conversions
@@ -77,7 +69,7 @@ code_to_ascii = {}
 
 
 def subr_init():
-    ''' initialize subr conversions '''
+    """ initialize subr conversions """
     global ascii_to_hex
     global code_to_ascii
 
@@ -95,47 +87,26 @@ def subr_init():
         code_to_ascii[code] = newdict
     pass
 
+
 def ascii_2_code(Device, ascii):
-    ''' convert ascii char to 5-level code
+    """ convert ascii char to 5-level code
 
     :param Device:
     :param ascii:
     :return: -2 error, -1 device ignores this symbol
-    '''
+    """
+
     if ascii not in ascii_to_code:
         return -2
 
     dict = ascii_to_code[ascii]
-
     code = dict['code']
     devices = dict['devices']
 
-    if (Device & devices) != 0:
-        return(code)
+    if Device & devices != 0:
+        return code
     else:
-        return(-1)
-
-
-def code_2_ascii(code):
-    '''	convert 5-level code to ascii
-    :param code:
-    :return:
-
-    only valid for typewriter
-    as paper tape outputs all codes
-    '''
-    if code not in code_to_ascii:
-        return -2
-
-    dict = code_to_ascii[code]
-
-    ascii = dict['ascii']
-    devices = dict['devices']
-
-    if (devices & DEV_TYPEWRITER) != 0:
-        return ascii
-
-    return -1		# typewriter ignores
+        return -1
 
 
 def int_to_str(num):
@@ -367,4 +338,12 @@ def instr_2_hex_string(instr):
         out_str += hex_to_ascii[nibble]
     return out_str
 
+
+def print_list_hex(label, values):
+    outstr = label + '['
+    for value in values:
+        num_str = " %02x" % value
+        outstr += num_str
+    outstr += ']'
+    print(outstr)
 

@@ -13,12 +13,14 @@ pg15_hex = "0123456789uvwxyz"
 pg15_file = sys.stdout
 pg15_flush = False
 
+
 def putcg15(ch):
     pg15_file.write(ch)
-    if pg15_flush == True:
+    if pg15_flush:
         pg15_file.flush()
 
-def printg15_int(fd, value, base, sign):
+
+def printg15_int(value, base, sign):
     # set value to absolute value
     neg = 0
     if sign and value < 0:
@@ -65,9 +67,6 @@ def printg15(*args):
     else:
         pg15_flush = flush
 
-
-    print("args1=", args1)
-
     # args1 is now list of arguments minus the keywords
     fmt = args1[0]
     args1 = args1[1:]
@@ -81,10 +80,10 @@ def printg15(*args):
             continue
         elif state == '%':
             if c == 'd':
-                printg15_int(1, args1[0], 10, 1)
+                printg15_int(args1[0], 10, 1)
                 args1 = args1[1:]
             elif c == 'x' or c == 'p':
-                printg15_int(1, args1[0], 16, 0)
+                printg15_int(args1[0], 16, 0)
                 args1 = args1[1:]
             elif c == 's':
                 for ch in args1[0]:

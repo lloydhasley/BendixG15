@@ -198,17 +198,6 @@ class g15d_decode:
 
         str_l = instr_dec_hex_convert(instruction['loc'])
 
-        # D==31 normally converted to block
-        if False:
-            str_p = ' '
-            if instruction['d'] == 31 and instruction['deferred'] == 1:
-                str_p = 'w'
-            elif ((instruction['loc'] + 1) == instruction['t']) and instruction['d'] != 31:
-                str_p = 'w'
-            # D==31 normally converted to block
-            elif instruction['d'] != 31 and instruction['deferred'] == 0:
-                str_p = 'u'
-
         if instruction['deferred'] == 1:
             str_p = 'w'
         else:
@@ -228,9 +217,7 @@ class g15d_decode:
         destination_special = instruction['dspecial']  # destination special
         source_special = instruction['sspecial']  # source special
 
-        #str_0 = str_tape_block + '  ' + str_drum_track + '  ' + str_l + ':'
         str_0 = str_drum_track + '.' + str_l + ':'
-        #str_1 = str_instr + "  " + str_p + " " + str_t + " " + str_n + \
         str_1 = str_p + "." + str_t + "." + str_n + \
                         "." + str_c + "." + str_s + "." + str_d + str_bp
 
@@ -246,13 +233,8 @@ class g15d_decode:
         return
 
     def determine_start_end_times(self, instruction):
-
         if instruction["deferred"] == 0:
             # immediate instruction
-
-            # relative = 0
-            # if instruction['d'] == 31 and 24 <= instruction['s'] <= 27:
-            #    relative = 1
 
             time_start = instruction['loc'] + 1
             relative = 0
@@ -271,15 +253,10 @@ class g15d_decode:
                 time_end = instruction["n"] + instruction["t"]
                 relative = 1
             elif instruction['s'] == 27 and instruction['d'] == 31:  # Normalize
-                time_end = instruction["n"]  + instruction["t"]
+                time_end = instruction["n"] + instruction["t"]
                 relative = 1
             else:
                 time_end = instruction["t"] - 1  # stops one before T
-
-#            if instruction['t'] >= 108:
-#                time_end -= 20
-#                if relative == 0:
-#                    instruction['next_cmd_word_time'] -= 20
 
             if self.verbosity & 1:
                 print('\timmediate, start time=', time_start, ' end time=', time_end)
@@ -319,8 +296,10 @@ class g15d_decode:
                 time_start = self.minus_20_adj(time_start)
             time_end = self.minus_20_adj(time_end)
 
+        time_start = (time_start + 108) % 108
+        time_end = (time_end + 108) % 108
+
         if time_end < time_start:
-            time_end += 108
             self.cpu.total_revolutions += 1
 
         instruction['time_start'] = time_start

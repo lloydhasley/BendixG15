@@ -16,7 +16,6 @@
 #
 #############################################################
 #
-from G15Constants import *
 from G15Subr import *
 import copy
 
@@ -467,7 +466,7 @@ class G15Ptr:
         we want to skip over number track during block reads
 
         :param seed:
-        :param Position:
+        :param position:
         :return:
         '''
         word = seed
