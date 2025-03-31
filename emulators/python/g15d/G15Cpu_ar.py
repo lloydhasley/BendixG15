@@ -7,6 +7,53 @@ from G15Subr import *
 import G15Cpu
 from printg15 import *
 
+
+overflow = 0
+
+def complement (b):
+    if b&1 == 0: return b
+    sign = b&1
+    b ^= 1
+    b = (-b) & MASK29BIT
+    return b | 1
+
+def g15tosex (g15word):
+    seennonzero = 0
+    out = ""
+    if g15word & 1: out = '-'
+    if g15word & ~1 == 0: return out + '0'
+    for i in range(25, 0, -4):
+        digit = (g15word >> i) & 0x0F
+        if digit == 0 and seennonzero==0: continue
+        seennonzero = 1
+        if digit <= 9: out += str (digit)
+        else:          out += chr (digit - 10 + ord('u') )
+    return out
+
+
+def sextoint (str):
+    n = 0
+    neg = 0
+    for char in str:
+        if char == '-':
+            neg = 1
+            continue
+        if '0' <= char <= '9':
+            n = 16*n + int(char)
+            continue;
+        if 'u' <= char <= 'z':
+            n = 16*n + ord(char) - ord('u') + 10
+            continue
+        if 'U' <= char <= 'Z':
+            n = 16*n + ord(char) - ord('U') + 10
+            continue
+        print ("BAD INPUT CHAR: ", char);
+    return ((n<<1) | neg);
+
+
+
+
+
 # noinspection PyPep8Naming,PyPep8Naming
 class g15d_AR:
     """ g15d early bus """
@@ -29,19 +76,24 @@ class g15d_AR:
         if True:
             # Robb's
             ar = self.g15.drum.read(AR, 0)
-
-            sum = (ar & ~1) + (late_bus & ~1)
-            carry = 1 if (sum & (1<<30)) > 0 else 0
+            armag = ar & self.MASK29MAG
             arsign = ar & 1
+            lbmag = late_bus & self.MASK29MAG
             lbsign = late_bus & 1
+
+            sum = armag + lbmag
+            carry = 1 if (sum & (1<<29)) > 0 else 0
             uncorrectedsign = arsign ^ lbsign
             csign = uncorrectedsign ^ carry
             csum = (sum & MASK29BIT) | csign
-            if late_bus == 1: csum ^= 1
-            if uncorrectedsign == 0:
-                if carry == 1 and (lbsign == 0 or csum == 0): overflow = 1
-                if carry == 0 and lbsign == 1:             overflow = 1
 
+            if late_bus == 1:
+                csum ^= 1 # lb==-0 then change sign on sum
+
+            if uncorrectedsign == 0:
+                if carry == 1 and (lbsign == 0 or csum == 0): self.cpu.overflow = 1
+                if carry == 0 and lbsign == 1 and lbmag: self.cpu.overflow = 1
+            print(g15tosex(ar), "+", g15tosex(late_bus), "=", g15tosex(csum), "-1->", g15tosex(complement(csum)))
 
             if False:
                 asign = a & 1

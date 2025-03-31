@@ -76,7 +76,7 @@ class Emulator:
         self.execute_trace_enable = 0
         self.cmd_pause_count = 0
 
-        self.ascii = EmulAscii.EmulAscii()
+        self.ascii = EmulAscii.EmulAscii(self)
         self.cmds = EmulCmds.EmulCmds(self, self.g15)
         
         # start execution

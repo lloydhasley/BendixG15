@@ -13,7 +13,7 @@ import termios
 import tty
 
 class EmulAscii():
-    def __init__(self, emul ):
+    def __init__(self, emul):
         self.emul = emul
 
         self.open()
@@ -21,10 +21,12 @@ class EmulAscii():
     def open(self):
         self.fd = sys.stdin.fileno()
         self.old_settings = termios.tcgetattr(self.fd)
-        tty.setraw(sys.stdin.fileno())
+#        tty.setraw(sys.stdin.fileno())
+        tty.setcbreak(sys.stdin.fileno())
 
     def close(self):
         # restore original terminal settings
+        print("Restoring terminal settings")
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
 
     def kbhit(self):
