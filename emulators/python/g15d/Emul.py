@@ -62,7 +62,7 @@ class Emulator:
 
         self.cpu = self.g15.cpu
         self.error_count = 0
-        self.getc = EmulGetc.CharIO()
+        self.getc = EmulGetc.CharIO(self)
 
         self.music = EmulMusic.EmulMusic(self.g15)
 
@@ -76,7 +76,7 @@ class Emulator:
         self.execute_trace_enable = 0
         self.cmd_pause_count = 0
 
-        self.ascii = EmulAscii.EmulAscii()
+        self.ascii = EmulAscii.EmulAscii(self)
         self.cmds = EmulCmds.EmulCmds(self, self.g15)
         
         # start execution
@@ -161,8 +161,10 @@ class Emulator:
         
     def quit(self):
         print("Quitting Emulator")
-        self.runflag = 0
+        self.runflag = 0    # stops execution loop AND getchar loop
         self.music.close()
+        sleep(0.2)
+        self.ascii.close()
         sys.exit(0)
         
     def send_mesg(self, mesg_type, mesg_value):

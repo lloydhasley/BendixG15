@@ -34,6 +34,7 @@ class g15d_store:
             # eliminate minus-0
             if late_bus == 1 and self.cpu.flop_is:
                 late_bus = 0
+
             self.cpu.cpu_ar.write(late_bus)
             # self.g15.drum.write(AR, 0, late_bus)
 
@@ -46,12 +47,16 @@ class g15d_store:
             # self.g15.drum.write(AR, 0, new_ar)
 
         elif destination == MZ:  # TEST, MZ is not user writable
-        	# TEST instruction
-            if late_bus & (MASK29BIT - 1):	# ignore sign bit
+            # TEST instruction
+
+            # if late_bus & (MASK29BIT - 1):	# ignore sign bit
+            if late_bus:        # all bits including sign bits
                 instruction['next_cmd_word_time'] = instruction['n'] + 1
+
             if instruction['s'] < 28 and instruction['dp'] == 0 and instruction['ch'] == 2:
                 data = self.g15.drum.read(instruction['s'], word_time)
                 self.cpu.cpu_ar.write(data)
+
             if instruction['ch'] == 4:
                 # double precision
                 pass

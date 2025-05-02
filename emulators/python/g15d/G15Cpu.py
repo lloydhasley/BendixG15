@@ -210,7 +210,7 @@ class G15Cpu:
                 
     def sw_compute_h(self, value):
         self.halt_status = 0
-    
+        print("compute sw: instr=", self.instruction)
         self.sw_compute = value
         if value == "bp":
             self.sw_compute_bp_enable = 1

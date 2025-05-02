@@ -1,22 +1,44 @@
 #
-# handles actual ASCII IO to the terminal
-# GUIs will replace this file
 #
-import sys
+# emulates kbit,
+# but within a class so opening/closing can be separated
+#
+# returns char if one present
+# returns None if no chars present
+#
+
 import select
+import sys
+import termios
+import tty
 
-# not currently used
-# need to change input stream to non-blocking.
-# this sets the stage for a port to windows,
-# which does have a kbhit method
-#
-class EmulAscii:
-    def __init__(self):
-        pass
+class EmulAscii():
+    def __init__(self, emul):
+        self.emul = emul
 
-    @staticmethod
-    def kbhit():
-        # do we have any input
-        timeout = 0  # Non-blocking check
-        readable, _, _ = select.select([sys.stdin], [], [], timeout)
-        return bool(readable)
+        self.open()
+
+    def open(self):
+        self.fd = sys.stdin.fileno()
+        self.old_settings = termios.tcgetattr(self.fd)
+#        tty.setraw(sys.stdin.fileno())
+        tty.setcbreak(sys.stdin.fileno())
+
+    def close(self):
+        # restore original terminal settings
+        print("Restoring terminal settings")
+        termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
+
+    def kbhit(self):
+        rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+        if rlist:
+            c = sys.stdin.read(1)
+
+            if c == 3:      # control-c
+                self.emul.quit()
+
+            print(c, end='')
+            return c
+        else:
+            return False
+

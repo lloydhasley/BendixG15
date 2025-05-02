@@ -22,8 +22,10 @@ FRAMERATE_f = 1000000 / BIT_TIME		# bit frequency
 FRAMERATE = int(FRAMERATE_f)
 
 music_debug = True
+music_include = True
 
-p = pyaudio.PyAudio()
+if music_include:
+	p = pyaudio.PyAudio()
 
 
 class EmulMusic:
@@ -55,18 +57,22 @@ class EmulMusic:
 
 		self.stream_toplay = []
 
-		self.thread_run = True
-		self.t2 = threading.Thread(target=self.play, daemon=True)
+		if music_include:
+			self.thread_run = True
+			self.t2 = threading.Thread(target=self.play, daemon=True)
 
 		self.max_variation = 0 		# keep pip8 happy
 
 	def close(self):
 		self.thread_run = False
-		if self.outstream:
-			self.outstream.close()
+		if music_include:
+			if self.outstream:
+				self.outstream.close()
 
 	def play(self):
 		# music plays in a separate thread
+		if not music_include:
+			return
 		while self.thread_run:
 			if self.music_enable and self.outstream and self.stream_toplay != []:
 				self.outstream.write(self.stream_toplay)
@@ -76,9 +82,10 @@ class EmulMusic:
 	def enable(self, music_enable):
 		if not music_enable:
 			self.music_enable = False
-			self.stream_toplay = []
-			if self.outstream:
-				self.outstream.close()
+			if music_include:
+				self.stream_toplay = []
+				if self.outstream:
+					self.outstream.close()
 
 		if music_enable and not self.music_enable:
 			# no music_enable ==> yes music_enable (leading posedge music_enable
@@ -87,7 +94,8 @@ class EmulMusic:
 			self.search()
 
 			# open output audio channel
-			self.outstream = p.open(format=p.get_format_from_width(1), channels=1, rate=FRAMERATE, output=True)
+			if music_include:
+				self.outstream = p.open(format=p.get_format_from_width(1), channels=1, rate=FRAMERATE, output=True)
 
 		if music_enable:
 			print("setting music enable")
@@ -138,10 +146,6 @@ class EmulMusic:
 
 	def extract(self, track):
 		self.cur_position = 0
-
-#		if self.notdone:
-#			self.notdone = 0
-#			self.search()
 
 		if track == 29:
 			self.frequency = 0
