@@ -11,6 +11,8 @@ class G15TypeNumeric:
         self.output_history = []            # output (and input) history buffer
         self.input_buffer = []              # line buffer of G15 symbols types, ready for transfer to G15
 
+        self.out_history = ['']
+
     def type_enable(self, cmd_str):
         for c in cmd_str:
             if (c == ' ') or (c == '\t'):
@@ -77,10 +79,24 @@ class G15TypeNumeric:
         list(filter(G15_RELOAD.__ne__, outstr))
         list(filter(G15_STOP.__ne__, outstr))
 
+        # suppress leading zeros
+        while outstr[0] == 0 or outstr[0] == 0x10:
+            outstr = outstr[1:]
+
         ascii_str = self.g15.iosys.io_2_ascii(outstr)
         self.output_history.append(ascii_str)
 
-        print("TYPEOUT: ", ascii_str)
+        for c in ascii_str:
+            if c == '\n':
+                print("TYPEOUT: ", self.out_history[-1])
+                self.out_history.append('')
+            elif self.out_history[-1] == "":
+                self.out_history[-1] = c
+            else:
+                self.out_history[-1] += c
+
+        if self.out_history[-1] != '':
+            print("TYPEOUT: ", self.out_history[-1])
 
     def read(self):
         # characters from keyboard,
@@ -95,7 +111,7 @@ class G15TypeNumeric:
         #   g15 gets typewrite input when it tests for io ready
         #
         # maintains a 50 line history buffer (in ascii)
-        # buffer is shared without output
+        # buffer is shared with output
         #
         # maintains a one-line buffer for transfer to G15 (in G15 symbols)
         #

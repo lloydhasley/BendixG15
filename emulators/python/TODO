@@ -1,5 +1,9 @@
 
 
+fillin readmes
+
+document emulator usage
+
 slow_in
     errormesg unknown char, convert to g15 hex before print
 
@@ -9,17 +13,22 @@ iosys.get_status
     wait unitl ptr is fed through to iosys to decide.
     modify cmds.py:verify to use
 
-disassembler
-    use dgreen's format, raw terms, followed by derived terms.
-    add .s style output
+eliminate qcmd
+
+bkuker
+    fractal program results different than in web emulator
 
 button on
     readblock message.
     simplifiy?
 
-attach GUI
+intercom
+    loading zero suppression
 
-eliminate thread t1, now that thread t2 exist.
+slowout
+    TYPEOUT  if prior line did not end with \n, concatenate with prior line
+
+attach GUI
 
 cmp prompt
     needs double CR before displaying prompt.
@@ -42,19 +51,22 @@ cpu dc button off
 
 typewriter
     add direct G15 command input
+        done, need to debug/verify operation
     add alphanumeric modes
 
 reduce checksum routines
     PTR has two
     drum has one
     subr has one.
-        bbelieve subr should be the golden one
+        believe subr should be the golden one
 
 can we eliminate int variable type
     use comp2s of known size (29 or 58)
     always add instead of subtract
 
-replace int(x,0) with a g15 hex equivalent
+profile code for speedup
+
+replace int(x,0) with a g15 hex equivhhhhhhhhhhhhlent
 
 verbose does not register with cmd interpreter unlike verbosity
 
@@ -65,26 +77,10 @@ cpu has hex converting routine
 add history to typewriter output
     list history to move to iosys
 
-TTR12 abnominallies
-    two loaders on tape prior to TTR1
-    ttr12 from PF and DG are different
-    TTR1 0:19  T=20 in listing, T=21 in tape
-
 cpu children verbosity flags should point back to cpu module
     instead of during __init__ constructioon
     to allow dynamic setting
         or have cmd go to proper hardware hierarchy location
-
-Python/Verilog differences:
-    need to check Verilog:
-        instr 18 at wr 30: print AR
-            coding manual (and python) clears AR
-            while Verilog does not
-        instr 26 at wrt 32,  
-        	repeatedly waiting for IOReady,   ACC begins to rotate left by four bits
-            why?  not always, just sometimes.
-            4-bit precess implies IO character arrived.
-            but why does ACC precess?  shouldn't this be contained to iO-subsystem?
 
 paragraph D61 return exit
     different results with compute sw in go or bp
@@ -92,35 +88,13 @@ paragraph D61 return exit
 need to add a CPU.close() at sim shutdown
     needs to call vtrace logger
 
-Paragraph C-12c
-    TR/TVA not => block sign bit onto EB for certain tracks.
-    not in c++ model either
-
 really think through lock/unlock.
     we have commented out many of these.
     in new structure the handlers are in the secondary clock domain
-    
-backport to c++ type19 condition test on ch==0
-    needs to handle rollover past 108 with the correction of 20 in mind
-
-backport to c++ return fix for unusual CHs
-
-time_start,time_End
-    is time_End inclusive or exclusive.
-    seems immediate and deferred are using different definitions
 
 int(x,0) bombs if given a non-numeric value
     ie user mistypes a user label
-    
- test27, (move to Mz)
-    has ch=2 and ch4 variants
-    need to copy from python to c++
 
-music
-    move from run option to, separate command that slows down emul to realtime
-    so we can capture and play music directly without an extraction step
-    followed by a play step.
-    
 add run to halt/typein/typeout + 2 instructions
 		pause
     magtape
@@ -141,8 +115,56 @@ cmd status looks for status and Status
 	let's consolidate done to one or the other, but not both
 
 debug/test pause command
-    
+
+=== backport to c++ model ++++
+
 backport from python to c++, d31
     one bug fixed on 1/24 not in c++
         23:31ch3  add +1 to time_End (time_end is inclusive)
     
+ test27, (move to Mz)
+    has ch=2 and ch4 variants
+    need to copy from python to c++
+
+backport to c++ type19 condition test on ch==0
+    needs to handle rollover past 108 with the correction of 20 in mind
+
+backport to c++ return fix for unusual CHs
+    return in general
+   Paragraph C-12c
+    TR/TVA not => block sign bit onto EB for certain tracks.
+    not in c++ model either
+
+Paragraph C-12c
+    TR/TVA not => block sign bit onto EB for certain tracks.
+    not in c++ model either
+
+modify log trace output format to match python
+
+==== verilog =====
+
+Python/Verilog differences:
+    need to check Verilog:
+        instr 18 at wr 30: print AR
+            coding manual (and python) clears AR
+            while Verilog does not
+        instr 26 at wrt 32,
+        	repeatedly waiting for IOReady,   ACC begins to rotate left by four bits
+            why?  not always, just sometimes.
+            4-bit precess implies IO character arrived.
+            but why does ACC precess?  shouldn't this be contained to iO-subsystem?
+
+
+===== TTR =======
+
+ TTR12 abnominallies
+    two loaders on tape prior to TTR1
+    ttr12 from PF and DG are different
+    TTR1 0:19  T=20 in listing, T=21 in tape
+
+=== futures ====
+
+disassembler
+    use dgreen's format, raw terms, followed by derived terms.
+    add .s style output
+

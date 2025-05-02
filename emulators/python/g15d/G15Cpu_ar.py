@@ -26,6 +26,38 @@ class g15d_AR:
             return value
 
     def add(self, late_bus):
+        global overflow
+        B30 = 1 << 29
+        MASK29 = B30 - 1
+
+        ar = self.g15.drum.read(AR, 0)
+        arsign = ar & 1
+        lbsign = late_bus & 1
+        lbmag = late_bus & ~1
+        sum = (ar & ~1) + lbmag
+        carry = (sum & B30) > 0
+        sum = sum & MASK29
+        neg0 = late_bus == 1  # negative 0: 00...0000.1
+        uncorrectedsign = arsign ^ lbsign
+        csign = uncorrectedsign ^ (carry | neg0)
+        fullsum = sum | csign
+
+        overflow = 0
+        if uncorrectedsign == 0:
+            if neg0 and sum < 2: overflow = 1  # neg0 -> endcarry=1
+            if carry and (lbsign == 0 or sum == 0): overflow = 2
+            if (not carry) and lbsign == 1 and lbmag != 0: overflow = 3
+        # print(g15tosex(ar), " + ", g15tosex(late_bus), " => ", fullsum);
+
+        self.cpu.overflow = 0
+        if overflow:
+            self.cpu.overflow = 1
+
+        self.g15.drum.write(AR, 0, fullsum)
+
+        return fullsum
+
+    def add1(self, late_bus):
         ar = self.g15.drum.read(AR, 0)
         ar_sign = ar & 1
         ar_mag = ar & self.MASK29MAG

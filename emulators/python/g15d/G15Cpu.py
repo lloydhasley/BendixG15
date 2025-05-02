@@ -65,10 +65,8 @@ class G15Cpu:
         self.cpu_lb = G15Cpu_lb.g15d_lb(self)
         self.cpu_d31 = G15Cpu_d31.g15d_d31(self, self.verbosity)
         self.cpu_store = G15Cpu_store.g15d_store(self)
-        flag = 0
-        if self.verbosity & VERBOSITY_CPU_LOG_STDOUT:
-            flag = 1
-        self.cpu_log = G15Cpu_log.g15d_log(self, flag, vtracefile)    # Verilog trace output
+        self.vtrace_enabled = False
+        self.cpu_log = G15Cpu_log.g15d_log(self, self.verbosity & VERBOSITY_CPU_LOG_STDOUT, vtracefile)    # Verilog trace output
 
         self.cpu_ar = G15Cpu_ar.g15d_AR(self)
         self.cpu_pn = G15Cpu_pn.g15d_PN(self, self.verbosity)
@@ -121,10 +119,12 @@ class G15Cpu:
         # noinspection PyDictCreation
         instruction = {}
         instruction['instr'] = 0
-        instruction['cmd_line'] = 7     # start execution at 23:0
+#        instruction['cmd_line'] = 7     # start execution at 23:0
+        instruction['cmd_line'] = 6     # start execution at 23:0
         instruction['n'] = 0
         instruction['next_cmd_word_time'] = 0
-        instruction['next_cmd_line'] = 7
+#        instruction['next_cmd_line'] = 7
+        instruction['next_cmd_line'] = 6
         instruction['next_cmd_acc'] = 0
         instruction['cmd_acc'] = 0
         self.instruction = instruction
@@ -308,7 +308,8 @@ class G15Cpu:
                 print("Cpu has hit breakpoint")
 
         # noinspection PyUnboundLocalVariable
-        self.cpu_log.logger(time_start, time_end, early_bus, intermediate_bus, late_bus)
+        if self.vtrace_enabled:
+            self.cpu_log.logger(time_start, time_end, early_bus, intermediate_bus, late_bus)
 
         # increment instruction count
         self.total_instruction_count += 1
@@ -425,7 +426,7 @@ class G15Cpu:
             
         print('\tDc Power is: ' + status)
         print('\t  IO status: ', io_status_str[self.g15.iosys.status])
-        print('\t   IO Ready: ', self.g15.iosys.get_status())
+#        print('\t   IO Ready: ', self.g15.iosys.get_status())
         print('\t         AR: ', int_to_str(acc))
         print('\t  acc_carry: ', self.acc_carry, ' OvrFlow: ', self.overflow)
         print('\t     DA1_GO: ', self.status_da1)
@@ -447,11 +448,12 @@ class G15Cpu:
         # $ of insturctions executed to date
         #
         print()
-
-        print('\t        Number of instructions executed: ', self.total_instruction_count)
-        print('\tNumber of unknown instructions executed: ', self.unknown_instruction_count)
+        print('\t  Number of unknown instructions executed: ', self.unknown_instruction_count)
+        print('\t          Number of instructions executed: ', self.total_instruction_count)
+        print('\t               Number of drum revolutions: ', self.total_revolutions)
+        print('\tEstimated execution time on real G15 (ms): ', (self.total_revolutions * TRACK_TIME)/1000.0 )
         print()
-        print('\tNumber of Bell Rings: ', self.bell_ring_count)
+        print('\t                     Number of Bell Rings: ', self.bell_ring_count)
 
     # gather machine status for display
     def Status(self):

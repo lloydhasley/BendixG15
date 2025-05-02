@@ -6,7 +6,7 @@ special destination (D=31)
 from G15Subr import *
 import G15Cpu_math
 
-VERBOSITY_MATH_MULIPLY = 1
+VERBOSITY_MATH_MULTIPLY = 1
 VERBOSITY_MATH_DIVIDE = 2
 VERBOSITY_D31_MARKRET = 4
 VERBOSITY_D31 = 8
@@ -24,6 +24,8 @@ class g15d_d31(G15Cpu_math.g15d_math):
         self.cpu = cpu
         self.g15 = cpu.g15
         self.verbosity = verbosity
+
+#        self.verbosity |= VERBOSITY_MATH_DIVIDE
 
     def d31_special(self, instruction):
         """ Explicit decode of instructions given the coding manual
@@ -192,7 +194,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # read paper tape
                 #
-                self.d31_special_print('read punched tape', g15d_d31.SPRINT_DONE)
+                # self.d31_special_print('read punched tape', g15d_d31.SPRINT_DONE)
                 self.cpu.block = self.g15.ptr.read_block()
                 return
 
@@ -208,7 +210,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             if ch == 0:
                 pass
             elif ch == 1:
-                self.d31_special_print('Check Typwriter Punch Switch', g15d_d31.SPRINT_DONE)
+                self.d31_special_print('Check Typewriter Punch Switch', g15d_d31.SPRINT_DONE)
                 if self.cpu.sw_tape == 'punch':
                     instruction['next_cmd_word_time'] += 1
             elif ch == 2:
@@ -317,7 +319,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             #
             # multiply
             #
-            self.multiply(self.verbosity & VERBOSITY_MATH_MULIPLY)
+            self.multiply(self.verbosity & VERBOSITY_MATH_MULTIPLY)
             return
 
         elif instruction['s'] == 25:
@@ -341,7 +343,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             reg_id = self.g15.drum.read_two_word(ID, 0)
             reg_ar = self.g15.drum.read(AR, 0)
 
-            for j in range(instruction['t']>>1):
+            for j in range(instruction['t'] >> 1):
                 if reg_ar & (1 << 29):
                     reg_ar = 0
                     break

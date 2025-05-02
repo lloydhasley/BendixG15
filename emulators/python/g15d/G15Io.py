@@ -256,7 +256,7 @@ class G15Io:
             print("slowoutcount=", self.slow_out_count, " drum=", self.g15.drum.revolution_get())
 
         # accumulate sign bit
-        #   any sign bit sets sign, outputing a character resets it
+        #   any sign bit sets sign, outputting a character resets it
         m19 = self.g15.drum.read(self.data_track, 107)  # note: will also work for AR
         self.os = m19 & 1
 

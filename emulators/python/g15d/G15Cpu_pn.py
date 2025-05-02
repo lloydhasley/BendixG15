@@ -77,6 +77,11 @@ class g15d_PN:
             sum_mag &= self.MASK58MAG      # remove any carry out
 
             sign_out = (late_bus_sign ^ pn_sign ^ carry_out) & 1
+
+            if late_bus_mag == 0 and late_bus_sign:
+                # -0
+                sign_out ^= 1
+
             pn_new = sum_mag | sign_out
 
             if self.overflow_detect(late_bus_sign, pn_sign, late_bus_mag, sum_mag, carry_out):

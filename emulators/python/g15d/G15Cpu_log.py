@@ -1,7 +1,6 @@
 """
-G15D Early Bus implementation
-
-
+Verilog Trace file generation
+(used to compare results of various emulators)
 """
 
 import sys
@@ -24,12 +23,16 @@ class g15d_log:
             try:
                 self.fout = open(filename, "w")
                 print('Verilog vtrace file opened: ', filename)
+                cpu.vtrace_enabled = True
             except IOError:
-                print('Error, Cannot open execution log file: ', filename)
-                self.fout = sys.stdout
+                print('Error, Cannot open Verilog vtrace file: ', filename)
+                sys.exit(1)
 
         self.header = "   ICNT:     TIME : TR  :   INSTR  :TRK.RC:DEF: T: N:C: S: D:BP:      EB:      IB:      "
         self.header += "LB:      AR:          MQ(24):          ID(25):          PN(26):FO:IP:IOSTATUS : DESCRIPTION"
+
+        if stdout_enable:
+            cpu.vtrace_enabled = True
 
     def close(self):
         if self.fout != sys.stdout:

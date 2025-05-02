@@ -18,6 +18,7 @@
 #
 from G15Subr import *
 import copy
+import os
 
 VERBOSITY_PT_MOUNT = 1
 VERBOSITY_PT_CHECKSUM = 2
@@ -83,6 +84,18 @@ class G15Ptr:
 
         dirs = [self.tapes + '/', './tapes/', './']
         suffixes = ['', '.pt', '.pti', '.ptr']
+
+        if self.tapes == '.':
+            # no tape directory specified, so let's try to find it.
+            # we assume executable is in the original directory structure
+            while True:
+                dir = os.path.dirname(os.path.realpath(__file__))
+                fpath = dir + '/' + 'tapes'
+                if os.path.exists(fpath):
+                    dirs.append(dir)
+                    break
+                if dir == '/':
+                    break
 
         if file_name[0] == '/':
             fnames = [file_name]

@@ -23,9 +23,6 @@ class g15d_ib:
         :param instruction:         current instruction being executed
         :return:                    intermediate bus (29-bit
         """
-        if self.cpu.total_instruction_count == 728:
-            #print("hello")
-            pass
 
         Ts = instruction['ts']
 

@@ -6,8 +6,6 @@
 # message format:
 # [MESG_ID, option1, option2]
 #
-# from G15Constants import *
-
 #
 # G15 internal command/message handler
 #
