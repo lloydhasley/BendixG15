@@ -119,10 +119,12 @@ class G15Cpu:
         # noinspection PyDictCreation
         instruction = {}
         instruction['instr'] = 0
-        instruction['cmd_line'] = 7     # start execution at 23:0
+#        instruction['cmd_line'] = 7     # start execution at 23:0
+        instruction['cmd_line'] = 6     # start execution at 23:0
         instruction['n'] = 0
         instruction['next_cmd_word_time'] = 0
-        instruction['next_cmd_line'] = 7
+#        instruction['next_cmd_line'] = 7
+        instruction['next_cmd_line'] = 6
         instruction['next_cmd_acc'] = 0
         instruction['cmd_acc'] = 0
         self.instruction = instruction

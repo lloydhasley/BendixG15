@@ -20,10 +20,10 @@ bkuker
 
 button on
     readblock message.
-    simplify?
+    simplifiy?
 
 intercom
-    typeout zero suppression
+    loading zero suppression
 
 slowout
     TYPEOUT  if prior line did not end with \n, concatenate with prior line
@@ -48,7 +48,6 @@ TTR12:
 
 cpu dc button off
     should terminate simuations, not just lock sim engine
-    DONE -- NEEDS CHECKING
 
 typewriter
     add direct G15 command input
@@ -67,8 +66,7 @@ can we eliminate int variable type
 
 profile code for speedup
 
-replace int(x,0) with a g15 hex equivalent
-    use intg15()
+replace int(x,0) with a g15 hex equivhhhhhhhhhhhhlent
 
 verbose does not register with cmd interpreter unlike verbosity
 
@@ -94,10 +92,6 @@ really think through lock/unlock.
     we have commented out many of these.
     in new structure the handlers are in the secondary clock domain
 
-time_start,time_End
-    is time_End inclusive or exclusive.
-    seems immediate and deferred are using different definitions
-
 int(x,0) bombs if given a non-numeric value
     ie user mistypes a user label
 
@@ -119,9 +113,6 @@ g15logger, no sign, uses %x
 
 cmd status looks for status and Status
 	let's consolidate done to one or the other, but not both
-
-ar:ic feeding overflow.
-    late_mag, seems to be missing IS qualification
 
 debug/test pause command
 
