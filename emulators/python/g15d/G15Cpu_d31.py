@@ -25,7 +25,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
         self.g15 = cpu.g15
         self.verbosity = verbosity
 
-        self.verbosity |= VERBOSITY_MATH_DIVIDE
+        # self.verbosity |= VERBOSITY_MATH_DIVIDE
 
     def d31_special(self, instruction):
         """ Explicit decode of instructions given the coding manual

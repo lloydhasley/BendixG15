@@ -19,7 +19,6 @@ switch compute off      # note compute or run, do not use both
 # bring up the machine
 #
 # 
-#ptr mount TAPES/lcm/diaper_reel1.pti
 ptr mount diaper_reel1_lcm.pti
 button dc on
 

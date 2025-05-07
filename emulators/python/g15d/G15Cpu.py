@@ -279,6 +279,7 @@ class G15Cpu:
             if self.verbosity & VERBOSITY_CPU_TRACE:
                 print("\tts=", time_start, " te=", te, '/', te % 108)
 
+            self.te = te
             for self.word_time in range(time_start, te + 1):
                 early_bus, intermediate_bus, late_bus = self.execute(instruction, self.word_time)
 

@@ -15,8 +15,8 @@ switch compute go
 pause 30
 switch compute off
 pause 30
-switch computer go
-
+#switch computer go
+run 200
 
 #run 80000    # run until prompt
 

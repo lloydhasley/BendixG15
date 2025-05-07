@@ -28,7 +28,8 @@ def main():
     arg_parser.add_argument('-v', dest='vtrace', default=None)
     arg_parser.add_argument('-c', action='store', dest='configuration', default=configuration)
     arg_parser.add_argument('-S', action='store_false', dest='signenable', default=True)
-    arg_parser.add_argument('-t', action='store', dest='tapes', default='.')
+    # note: tapename is optional, can be specified in s
+    arg_parser.add_argument('-t', action='store', dest='tapename', default=None, help="tape name")
     # signenable=1 vtrace files displays integers as signed, else 29bits unsigned
     arg_parser.add_argument('scriptfile', nargs='?', default=None)
     	

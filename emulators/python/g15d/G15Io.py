@@ -53,8 +53,9 @@ class G15Io:
 
     def set_status(self, status):
         if status == IO_STATUS_READY:
-            if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
-                print('output=', self.outstr)
+            if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
+                    print('output=', self.outstr)
 
             self.status = IO_STATUS_READY
 
@@ -74,7 +75,7 @@ class G15Io:
             self.status = IO_STATUS_OUT_TYPE_L19
 
         else:
-            print('Error: unsupported IO device, ignored')
+            print('Error: unsupported IO device, ignored:  status=0x%02x' % self.status)
             self.status = IO_STATUS_READY
 
         return self.status == IO_STATUS_READY
@@ -278,10 +279,9 @@ class G15Io:
                 print('format= 0x%x039x' % self.g15_format)
     
             if self.verbosity & VERBOSITY_IO_FORMAT:
-                print('format3:= 0x%08x' % self.g15.drum.read(self.format_track, 3))
-                print('format2:= 0x%08x' % self.g15.drum.read(self.format_track, 2))
-                print('format1:= 0x%08x' % self.g15.drum.read(self.format_track, 1))
-                print('format0:= 0x%08x' % self.g15.drum.read(self.format_track, 0))
+                print('format3:= o%010o' % self.g15.drum.read(self.format_track, 3))
+                print('format2:= o%010o' % self.g15.drum.read(self.format_track, 2))
+                print('format1:= o%010o' % self.g15.drum.read(self.format_track, 1))
 
             self.zero_suppress = self.enable_zero_suppress
 

@@ -18,6 +18,7 @@
 #
 from G15Subr import *
 import copy
+import os
 
 VERBOSITY_PT_MOUNT = 1
 VERBOSITY_PT_CHECKSUM = 2
@@ -27,25 +28,55 @@ VERBOSITY_PT_PARSE = 4
 class G15Ptr:
     ''' paper tape reader for the g15
     '''
-    def __init__(self, g15, tapes='.', Verbosity=0x2):
+    def __init__(self, g15, tapedir=None, Verbosity=0x2):
         self.g15 = g15
-        self.tapes = tapes
+        self.tapedir = tapedir
         self.verbosity = Verbosity
 
         # total number of "patterns" not understood on the tapee
         self.deal_with_me_count = 0
 
-        self.tape_name = ""
+        self.tape_dirname = 'tapes'
         self.read_index = 0		# next block ID to "read" into emulator
+        self.suffixes = ['', '.pt', '.pti', '.ptr']
+        self.tape_paths = self.searchForTapesDirectory(tapedir)
+
+        print("tape-path=", self.tape_paths)
 
         # create empty tape image
         self.tape_parsed = []			# will hold parsed blocks
 
         # create artificial number track
         self.numbertrack = self.numbertrack_create()
-        #
+
         if self.verbosity & 1:
             print('\tPaper tape Reader Attached')
+
+    def searchForTapesDirectory(self, tapedir):
+        tape_paths = []
+        if tapedir:
+            tape_paths.append(tapedir)  # specified directory
+        tape_paths.append('.')          # current directory
+
+        # get python executable directory
+        spath = os.path.abspath(__file__)
+        sdir = os.path.dirname(spath)
+        tape_paths.append(sdir)         # executable directory
+
+        # search upward looking for "tapes" directory
+        dir = os.path.dirname(sdir)
+        while True:
+            tdir = dir + '/' + self.tape_dirname
+            if os.path.exists(tdir):
+                tape_paths.append(tdir + '/images') # found it
+                break
+            dir = os.path.dirname(dir)
+            print("dir=", dir)
+            if dir == '/':      # all done
+                # no tapes directory dir tree
+                break
+
+        return(tape_paths)
 
     def insure_NT(self):
         if len(self.tape_parsed) == 0:
@@ -81,38 +112,45 @@ class G15Ptr:
 
         print("Mounting tape: ", file_name, " onto paper tape reader")
 
-        dirs = [self.tapes + '/', './tapes/', './']
-        suffixes = ['', '.pt', '.pti', '.ptr']
+        # make list of possible file names
+        # not most efficient approach, but less confusing
 
+        file_names = []
         if file_name[0] == '/':
-            fnames = [file_name]
+            # an absolute path
+            file_names.append(file_name)
         else:
-            fnames = []
-            for dir in dirs:
-                fnames.append(dir + file_name)
+            # develop paths
+            for dir in self.tape_paths:
+                for suffix in self.suffixes:
+                    filename = dir + '/' + file_name + suffix
+                    file_names.append(filename)
+
+        # filenames is a list of possible filenames
+        # note: if user fname begins with / it is assumed to be complete path
+
+        print("file_names=", file_names)
+        print("will try to mount the following:")
+        for file_name in file_names:
+            print("\t", file_name)
 
         flag = 0
-        for fname in fnames:
-            for suffix in suffixes:
-                self.tape_name = fname + suffix
-                if self.verbosity & 1:
-                    print('Trying to open file: ', self.tape_name)
-
-                try:
-                    FileP = open(self.tape_name, 'rb')
-                    flag = 1
-                    break
-                except IOError:
-                    # print('Error:  Cannot open tape file: ', self.tape_name, ' for reading')
-                    continue
-            if flag:
+        for file_name in file_names:
+            if self.verbosity & 1:
+                print('Trying to open file: ', self.file_name)
+            try:
+                FileP = open(file_name, 'rb')
+                flag = 1
                 break
+            except IOError:
+                # print('Error:  Cannot open tape file: ', self.tape_name, ' for reading')
+                continue
 
-        if flag:
-            print('Tape: ', self.tape_name, ' has been mounted')
-        else:
+        if flag == 0:
             print('Error: Cannot open file: ', file_name, ' for reading')
             return
+
+        print('Tape: ', file_name, ' has been mounted')
 
         # read the file
         # determine if tape is bit transposed (BIG ENDIAN at bit level)
@@ -121,8 +159,6 @@ class G15Ptr:
         # since bit 5 is set for each numeric value,
         # 		its occurrence should dominate on tape
         # convert input strings to numeric bytes while we count
-        bit1_count = 0
-        bit5_count = 0
         image = []
         for bytestr in FileP.read(-1):
             image.append(bytestr)
@@ -139,14 +175,14 @@ class G15Ptr:
         print('\ttape Contents:')
         block_content = 0
         for block in self.tape_parsed:
-            checksum = 0
+            sum2 = self.checksum2(block)
 
+            checksum = 0
             for word in block:
                 value = word >> 1
                 sign = word & 1
                 if sign:
                     value = (~value) + 1
-
                 checksum += value
             checksum &= 0x1fffffff
 
@@ -158,7 +194,7 @@ class G15Ptr:
             else:
                 numbertrack_str = '  '
 
-            print('\t\tblock #%2d' % block_content, ' has %3d' % len(block), ' words, checksum= ', int_to_str(checksum), numbertrack_str)
+            print('\t\tblock #%2d' % block_content, ' has %3d' % len(block), ' words, checksum= ', signmag_to_str(sum2), numbertrack_str)
             block_content += 1
 
         print('Number of blocks: ', len(self.tape_parsed))
@@ -167,33 +203,27 @@ class G15Ptr:
         # determine active index intro tape contents lists
         self.read_index = 0
 
-    def checksum(self, block):
-        '''
-        :param block: 	block of tape data to be checksumed
-        :return:
-        '''
-        sum = 0
-        # j = range(34, 108)
-        # j.extend(range(34))
-        j = range(0, 108)
+    def checksum2(self, block):
 
-        for i in j:
-            word = block[i]
-            value = signmag_to_int(word)
-            sum += value
+        checksum = 0
+        for word in block:
+            value = word >> 1
+            sign = word & 1
+            if sign:
+                value = (~value) + 1
+            value &= 0x1fffffff
+            checksum += value
+        checksum &= 0x1fffffff
 
-            if self.verbosity & VERBOSITY_PT_CHECKSUM:
-                str = int_to_str(sum)
-                print('i=', i, 'word value (+-dec)=', value, '/value-x=', int_to_str(value), 'temp checksum=', str)
-                word = int_to_signmag(sum)
-                str = signmag_to_str(word)
-                print(str)
+        # convert to sign mag
+        chksum2 = (checksum << 1) | (checksum >> 28)
+        chksum2 &= 0x1fffffff
 
-                sum &= 0x0fffffff
+        #outstr = signmag_to_str(chksum2)
+        #print("chksum2=%x"% chksum2)
+        # print("sum2c=", outstr)
 
-        print('checksum', sum)
-
-        return sum
+        return chksum2  # sign/mag
 
     def parse_tape(self, tape_contents):
         ''' process tape contents

@@ -21,11 +21,11 @@ from G15Constants import *
 
 class G15Numeric:
     """ A complete G15, numeric only IO """
-    def __init__(self, emulator, vtracefile, tapes='.', signenable=0):
+    def __init__(self, emulator, vtracefile, tapename=None, signenable=0):
         self.emul = emulator
         self.vtracefile = vtracefile
         self.signenable = signenable
-        self.tapes = tapes
+        self.tapename = tapename
         
         # attach the primary pieces of the g15
         print('building the Numeric G15...')
@@ -36,7 +36,7 @@ class G15Numeric:
         self.iosys = G15Io.G15Io(self)
 
         # All G15s had a paper tape reader (and punch) and a typewriter
-        self.ptr = G15Ptr.G15Ptr(self, self.tapes)
+        self.ptr = G15Ptr.G15Ptr(self, self.tapename)
         self.iosys.attach(DEV_IO_PTR, self.ptr, 'ptr')
 
         self.typewriter = G15TypeNumeric.G15TypeNumeric(self)       # initial G15 only had a numeric IO

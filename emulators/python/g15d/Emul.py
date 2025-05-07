@@ -17,7 +17,6 @@ Futures:
    paper tape punch is not modelled, but planned
    magnetic tape is not modelled, but planned
 """
-
 import queue
 import threading
 from time import sleep
@@ -43,7 +42,7 @@ class Emulator:
         self.vtrace = args.vtrace
         self.signenable = args.signenable
         self.scriptfile = args.scriptfile
-        self.tapes = args.tapes
+        self.tapename = args.tapename
         
         self.verbosity = 0
 
@@ -55,7 +54,7 @@ class Emulator:
         print('Loading configuration: ', self.configuration)
 
         if self.configuration in known_g15_configurations:
-            self.g15 = known_g15_configurations[self.configuration](self, self.vtrace, self.tapes, self.signenable)
+            self.g15 = known_g15_configurations[self.configuration](self, self.vtrace, self.tapename, self.signenable)
         else:
             print('Unknown G15D configuration:', self.configuration)
             sys.exit(1)

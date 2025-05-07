@@ -11,11 +11,12 @@ import select
 import sys
 import termios
 import tty
+import os
+
 
 class EmulAscii():
     def __init__(self, emul):
         self.emul = emul
-
         self.open()
 
     def open(self):
@@ -28,6 +29,9 @@ class EmulAscii():
         # restore original terminal settings
         print("Restoring terminal settings")
         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
+
+        # above statement does not seem work on MAC
+        os.system("stty sane")
 
     def kbhit(self):
         rlist, _, _ = select.select([sys.stdin], [], [], 0.1)

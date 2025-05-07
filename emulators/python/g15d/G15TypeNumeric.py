@@ -11,7 +11,7 @@ class G15TypeNumeric:
         self.output_history = []            # output (and input) history buffer
         self.input_buffer = []              # line buffer of G15 symbols types, ready for transfer to G15
 
-        self.out_history = [[]]
+        self.out_history = ['']
 
     def type_enable(self, cmd_str):
         for c in cmd_str:
@@ -75,34 +75,37 @@ class G15TypeNumeric:
     def write(self, outstr):
         # type on typewriter
 
-        list(filter(G15_WAIT.__ne__, outstr))
-        list(filter(G15_RELOAD.__ne__, outstr))
-        list(filter(G15_STOP.__ne__, outstr))
-
+        # list(filter(G15_WAIT.__ne__, outstr))
+        # list(filter(G15_RELOAD.__ne__, outstr))
+        # list(filter(G15_STOP.__ne__, outstr))
 
         ascii_str = self.g15.iosys.io_2_ascii(outstr)
         #self.output_history.append(ascii_str)
 
-        while True:
-            if ascii_str[0] == ' ':
-                ascii_str = ascii_str[1:]
-            else:
-                break
+        # loading spaces
+#        while True:
+#            if ascii_str[0] == ' ':
+#                ascii_str = ascii_str[1:]
+#            else:
+#                break
 
         # following handles output whose lines span multiple format statements
-        while True:
-            ii = ascii_str.find("\n")
-            if ii == -1:
-                self.out_history[-1].append(ascii_str[:ii])
+        for c in ascii_str:
+            self.out_history[-1] += c
+            if c == '\n':
                 print("TYPEOUT: ", self.out_history[-1])
-                continue
-            self.out_history[-1].append(ascii_str[:ii])
-            self.out_history.append([])
+                self.out_history.append('')
+        if len(self.out_history[-1]):
             print("TYPEOUT: ", self.out_history[-1])
-            ascii_str = ascii_str[ii + 1:]
-            break
 
-#        print("TYPEOUT: ", ascii_str)
+        if False:
+            for c in ascii_str:
+                self.out_history[-1].append(c)
+                if c == '\n':
+                    print("TYPEOUT: ", self.out_history[-1])
+                    self.out_history.append([])
+            if len(self.out_history[-1]):
+                print("TYPEOUT: ", self.out_history[-1])
 
     def read(self):
         # characters from keyboard,

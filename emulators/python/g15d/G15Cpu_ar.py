@@ -9,6 +9,8 @@ from printg15 import *
 
 
 overflow = 0
+B30 = 1 << 29
+
 
 def complement (b):
     if b&1 == 0: return b
@@ -16,6 +18,7 @@ def complement (b):
     b ^= 1
     b = (-b) & MASK29BIT
     return b | 1
+
 
 def g15tosex (g15word):
     seennonzero = 0
@@ -51,9 +54,6 @@ def sextoint (str):
     return ((n<<1) | neg);
 
 
-
-
-
 # noinspection PyPep8Naming,PyPep8Naming
 class g15d_AR:
     """ g15d early bus """
@@ -73,7 +73,7 @@ class g15d_AR:
             return value
 
     def add(self, late_bus):
-        if True:
+        if False:
             # Robb's
             ar = self.g15.drum.read(AR, 0)
             armag = ar & self.MASK29MAG
@@ -82,7 +82,7 @@ class g15d_AR:
             lbsign = late_bus & 1
 
             sum = armag + lbmag
-            carry = 1 if (sum & (1<<29)) > 0 else 0
+            carry = 1 if (sum & B30) > 0 else 0
             uncorrectedsign = arsign ^ lbsign
             csign = uncorrectedsign ^ carry
             csum = (sum & MASK29BIT) | csign
@@ -93,35 +93,8 @@ class g15d_AR:
             if uncorrectedsign == 0:
                 if carry == 1 and (lbsign == 0 or csum == 0): self.cpu.overflow = 1
                 if carry == 0 and lbsign == 1 and lbmag: self.cpu.overflow = 1
-            print(g15tosex(ar), "+", g15tosex(late_bus), "=", g15tosex(csum), "-1->", g15tosex(complement(csum)))
+#            print(g15tosex(ar), "+", g15tosex(late_bus), "=", g15tosex(csum), "-1->", g15tosex(complement(csum)))
 
-            if False:
-                asign = a & 1
-                amag = a & self.MASK29MAG
-                b = late_bus
-                bsign = late_bus & 1
-                bmag = late_bus & self.MASK29MAG
-
-                csum = amag + bmag
-                if (csum & (1<<30)) != 0:
-                    carry = 1
-                else:
-                    carry = 0
-                uncorrectedsign = (asign + bsign) & 1
-                csign = (uncorrectedsign + carry) & 1
-                csum = (csum & MASK29BIT) | csign
-                if b == 1:
-                    csum ^= 1
-                if uncorrectedsign == 0:
-                    if carry==0 and bsign==1:
-                        self.cpu.overflow = 1
-                    if carry==1 and (bsign==0 or csum ==0):
-                        self.cpu.overflow = 1
-
-            icnt = self.cpu.total_instruction_count
-            print("\t%d" % icnt, "late_bus=", signmag_to_str(late_bus),
-                  " ar=", signmag_to_str(csum))
-            self.g15.drum.write(AR, 0, csum)
         else:
             # Lloyd's
             ar = self.g15.drum.read(AR, 0)
@@ -132,23 +105,22 @@ class g15d_AR:
             late_bus_mag = late_bus & self.MASK29MAG
 
             sum_mag = ar_mag + late_bus_mag
-            carry = sum_mag >> 29
+            endcarry = sum_mag >> 29
             sum_mag &= self.MASK29MAG      # remove any carry out
 
-    #        instruction = self.cpu.instruction
-    #        ch1_3 = instruction['ch'] == 1 or instruction['ch'] == 3
+            ch = self.cpu.instruction['ch']
+#            if ch == 1 or ch == 3:
+#                endcarry = 1
+            if self.cpu.te == self.cpu.word_time:
+                pass
+                # last word.   do not corrrect -0 to +0
 
-    #        if late_bus == 1 and ch1_3:
-    #        if late_bus == 1:t
 
-            if ar == 1:
-                carry = 1   # compensate for -0
-
-            sum_sign = ar_sign ^ late_bus_sign ^ carry      # corrected sign
+            sum_sign = ar_sign ^ late_bus_sign ^ endcarry      # corrected sign
             result = sum_mag | sum_sign
 
             # if a_mag != 0 and b_mag != 0:
-            if self.overflow_detect(ar_sign, late_bus_sign, late_bus_mag, sum_mag, carry):
+            if self.overflow_detect(ar_sign, late_bus_sign, late_bus_mag, sum_mag, endcarry):
                 self.cpu.overflow = 1
 
             # if result == 1 and ((late_bus >> 28) == 0):

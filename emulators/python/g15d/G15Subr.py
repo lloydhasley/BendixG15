@@ -145,6 +145,7 @@ def signmag_to_str(signmag, str_width=8):
     else:
         sign_str = ' '
 
+    # print("signmap=%x"%signmag, " mag=%x" % mag)
     ret_str = sign_str + mag_to_str(mag, str_width)
 
     return ret_str
