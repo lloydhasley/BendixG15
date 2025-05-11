@@ -194,7 +194,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # read paper tape
                 #
-                self.d31_special_print('read punched tape', g15d_d31.SPRINT_DONE)
+                # self.d31_special_print('read punched tape', g15d_d31.SPRINT_DONE)
                 self.cpu.block = self.g15.ptr.read_block()
                 return
 
@@ -210,7 +210,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             if ch == 0:
                 pass
             elif ch == 1:
-                self.d31_special_print('Check Typwriter Punch Switch', g15d_d31.SPRINT_DONE)
+                self.d31_special_print('Check Typewriter Punch Switch', g15d_d31.SPRINT_DONE)
                 if self.cpu.sw_tape == 'punch':
                     instruction['next_cmd_word_time'] += 1
             elif ch == 2:
