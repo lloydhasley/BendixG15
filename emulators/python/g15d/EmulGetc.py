@@ -64,7 +64,7 @@ class CharIO:
             sys.stdout.write(k)
             sys.stdout.flush()
 
-            if k == '\n':
+            if k == '\n' or k == '\r':
                 line = self.buffer
                 self.buffer = ""
                 print("placing onto cmd queue: %s" % line)
