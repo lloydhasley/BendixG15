@@ -26,6 +26,53 @@ class g15d_AR:
             return value
 
     def add(self, late_bus):
+        self.add1(late_bus)
+
+    def add0(self, late_bus):
+        B30 = 1 << 29
+        MASK29 = B30 - 1
+
+        ar = self.g15.drum.read(AR, 0)
+        arsign = ar & 1
+        lbsign = late_bus & 1
+        lbmag = late_bus & ~1
+        sum = (ar & ~1) + lbmag
+        carry = (sum & B30) > 0
+        sum = sum & MASK29
+
+        ch = self.cpu.instruction['ch']
+        s = self.cpu.instruction['s']
+        d = self.cpu.instruction['d']
+
+        neg0   = False
+        print (">>>>>>", ch, "<<<<<<");
+        if late_bus == 1:			# addend (2nd no.) is -0?
+            neg0 |= ch == 1		                    # 'AD'
+            neg0 |= ch==3 and s<28 and d<28         # 'AVA'
+        else:
+            neg0 |= ch==3 and (s>=28 or d>=28)      # 'SU'
+        uncorrectedsign = arsign ^ lbsign
+        csign  = uncorrectedsign ^ (carry | neg0);
+        fullsum= sum | csign        # complete 29bit word
+
+        #
+        # check for overflow
+        overflow = 0
+        if uncorrectedsign == 0:
+            if neg0 and sum < 2:
+                overflow = 1	# neg0 -> endcarry=1
+            if  carry      and (lbsign == 0 or  sum   == 0):
+                overflow = 2
+            if (not carry) and  lbsign == 1 and lbmag != 0 :
+                overflow = 3
+        if overflow:
+            self.cpu.overflow = 1
+
+        self.g15.drum.write(AR, 0, fullsum)
+        return fullsum
+
+
+    def add2(self, late_bus):
         global overflow
         B30 = 1 << 29
         MASK29 = B30 - 1

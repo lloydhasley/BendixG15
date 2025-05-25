@@ -122,8 +122,8 @@ class g15d_ib:
                 intermediate_bus = early_bus
                 
         # suppress -0
-        if instruction['d']==AR or instruction['d']==AR_Plus:
-            if self.cpu.flop_is and (not self.cpu.flop_ic) and (intermediate_bus==1):
-                intermediate_bus = 0
+#        if instruction['d']==AR or instruction['d']==AR_Plus:
+#            if self.cpu.flop_is and (not self.cpu.flop_ic) and (intermediate_bus==1):
+#                intermediate_bus = 0
 
         return intermediate_bus

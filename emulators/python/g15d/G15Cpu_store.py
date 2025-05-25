@@ -25,6 +25,7 @@ class g15d_store:
         destination = instruction['d']
         Ts = instruction['ts']
         viaAR = instruction['cmd_type'] & (CMD_TYPE_TVA | CMD_TYPE_AVA)
+        AR_add_sub = instruction['cmd_type'] & (CMD_TYPE_AD | CMD_TYPE_SU)
         blockWrite = viaAR and Ts        # block during low ordered word if via AR
 
         if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_LATE_BUS:
@@ -45,6 +46,12 @@ class g15d_store:
 
             self.cpu.cpu_ar.add(late_bus)
             # self.g15.drum.write(AR, 0, new_ar)
+
+            if AR_add_sub:
+                # eliminate -0
+                new_ar = self.g15.drum.read(AR, 0);
+                if new_ar == 1 and self.cpu.flop_is:
+                    self.g15.drum.write(AR, 0);
 
         elif destination == MZ:  # TEST, MZ is not user writable
             # TEST instruction
