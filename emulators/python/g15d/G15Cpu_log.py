@@ -38,6 +38,12 @@ class g15d_log:
         if self.fout != sys.stdout:
             self.fout.close()
 
+    def msg(self, message):
+        print(message, file=self.fout)
+
+    def msg2(self, message):
+        print(message, file=self.fout, end="")
+
     def logger(self, time_start, time_end, early_bus, intermediate_bus, late_bus):
         # determine if we are idling waiting for IO complete
         instruction = self.cpu.instruction
@@ -138,3 +144,4 @@ class g15d_log:
             self.fout.flush()
 
             self.fout_count += 1
+

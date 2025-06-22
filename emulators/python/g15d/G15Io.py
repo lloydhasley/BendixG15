@@ -55,7 +55,7 @@ class G15Io:
         if status == IO_STATUS_READY:
             if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                 if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
-                    print('output=', self.outstr)
+                    print('output/3=', self.outstr)
 
             self.status = IO_STATUS_READY
 
@@ -243,6 +243,11 @@ class G15Io:
     def slow_out_doit(self):
         # is slow out active?
         end_flag = 0
+        xlate = [						# @@@
+                      '_', '-', 'N', 'T', 'E', '/', '.', 'W',	# @@@
+                      '@', '@', '@', '@', '@', '@', '@', '@',	# @@@
+                      '0', '1', '2', '3', '4', '5', '6', '7',	# @@@
+                      '8', '9', 'u', 'v', 'w', 'x', 'y', 'z']	# @@@
 
         if self.slow_out_count == 0:
             return
@@ -312,8 +317,10 @@ class G15Io:
                 nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
                 if self.zero_suppress and nibble == 0:
                     self.outstr.append(G15_SPACE)
+                    print (" ", end='');				# @@@ actual output
                 else:
                     self.outstr.append(G15_DIGIT | nibble)
+                    print (xlate[G15_DIGIT|nibble], end='')		# @@@ actual output
                     #
                 if nibble != 0:
                     self.zero_suppress = 0
@@ -323,18 +330,23 @@ class G15Io:
                 # fail if not.
                 if self.os:
                     self.outstr.append(G15_MINUS)
+                    print ("-", end='');				# @@@ actual output
                 else:
                     self.outstr.append(G15_SPACE)
+                    print (" ", end='');				# @@@ actual output
 
             elif format_code == FORMAT_CR:
                 self.outstr.append(G15_CR)
                 self.zero_suppress = self.enable_zero_suppress
                 self.g15.drum.precess(self.data_track, 1)
+#                print ("[\\n]");	# newline			# @@@@
+                print ("");		# newline			# @@@@
 
             elif format_code == FORMAT_TAB:
                 self.outstr.append(G15_TAB)
                 self.zero_suppress = self.enable_zero_suppress
                 self.g15.drum.precess(self.data_track, 1)
+                print ("	", end='');	# tab			# @@@@
 
             elif format_code == FORMAT_STOP:
                 # if M19, check if empty
@@ -352,7 +364,7 @@ class G15Io:
                         self.outstr.append(G15_STOP)
                         if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                             print('format complete')
-                            print('output=', self.outstr)
+                            print('output/1=', self.outstr)
                         end_flag = 1       # signal break of outer loop
                     else:
                         self.outstr.append(G15_RELOAD)
@@ -362,7 +374,7 @@ class G15Io:
                     self.outstr.append(G15_STOP)
                     if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                         print('format complete')
-                        print('output=', self.outstr)
+                        print('output/2=', self.outstr)
                     end_flag = 1
 
             elif format_code == FORMAT_RELOAD:
@@ -379,9 +391,11 @@ class G15Io:
             elif format_code == FORMAT_PERIOD:
                 self.outstr.append(G15_PERIOD)
                 self.zero_suppress = 0
+                print (".", end='')						# @@@
 
             else:
-                print('Error:Unknown output format code: ', format)
+                print('[Error:Unknown output format code: ', format, ']')	# @@@ 
+#                print('Error:Unknown output format code: ', format)	
                 self.g15.cpu.unknown_instruction_count += 1
 
         if self.slow_out_count == 3:
@@ -428,12 +442,10 @@ class G15Io:
             
         self.slow_out_count = 1
             
-        # print("AAA slowoutcount=", self.slow_out_count)
         return self.outstr
     #
     # convert G15 io tape codes to typewriter outputs
     #   includes ASCII conversionsts
-
     def io_2_ascii(self, data_out):
         if self.verbosity & VERBOSITY_IO_DETAIL:
             print('L2Str: t data_out=', data_out)

@@ -62,6 +62,7 @@ class Emulator:
         self.cpu = self.g15.cpu
         self.error_count = 0
         self.getc = EmulGetc.CharIO(self)
+        self.g15.bkuker = args.bkuker
 
         self.music = EmulMusic.EmulMusic(self.g15)
 

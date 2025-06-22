@@ -24,6 +24,7 @@ class g15d_lb:
         if instruction['cmd_type'] & (CMD_TYPE_TVA | CMD_TYPE_AVA):
             late_bus = self.cpu.cpu_ar.read()
             self.cpu.cpu_ar.write(intermediate_bus)
+#            self.cpu.cpu_log.msg ("AVA: lb="+signmag_to_str(late_bus)+"  IB="+signmag_to_str(intermediate_bus))
 
         else:
             late_bus = intermediate_bus

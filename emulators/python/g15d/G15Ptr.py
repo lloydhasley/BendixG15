@@ -129,10 +129,10 @@ class G15Ptr:
         # filenames is a list of possible filenames
         # note: if user fname begins with / it is assumed to be complete path
 
-        print("file_names=", file_names)
-        print("will try to mount the following:")
-        for file_name in file_names:
-            print("\t", file_name)
+#        print("file_names=", file_names)
+#        print("will try to mount the following:")
+#        for file_name in file_names:
+#            print("\t", file_name)
 
         flag = 0
         for file_name in file_names:

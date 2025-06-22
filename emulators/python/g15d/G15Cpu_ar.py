@@ -26,7 +26,7 @@ class g15d_AR:
             return value
 
     def add(self, late_bus):
-        self.add1(late_bus)
+        self.add0(late_bus)
 
     def add0(self, late_bus):
         B30 = 1 << 29
@@ -45,11 +45,9 @@ class g15d_AR:
         d = self.cpu.instruction['d']
 
         neg0   = False
-        print (">>>>>>", ch, "<<<<<<");
         if late_bus == 1:			# addend (2nd no.) is -0?
             neg0 |= ch == 1		                    # 'AD'
             neg0 |= ch==3 and s<28 and d<28         # 'AVA'
-        else:
             neg0 |= ch==3 and (s>=28 or d>=28)      # 'SU'
         uncorrectedsign = arsign ^ lbsign
         csign  = uncorrectedsign ^ (carry | neg0);

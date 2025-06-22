@@ -28,7 +28,9 @@ class g15d_PN:
         self.g15.drum.write(PN, word_time, late_bus)
 
     def add(self, late_bus, word_time):
+        self.g15.cpu.cpu_log.msg2 ("PNadd["+str(word_time)+"]: LB="+signmag_to_str(late_bus)+" +PN="+signmag_to_str(self.g15.drum.read(PN, word_time)))	 # @@@
         if self.cpu.instruction["time_end"] == self.cpu.instruction["time_start"]:
+            self.g15.cpu.cpu_log.msg2 (" -- time_end == time_start --");		# @@@
             late_bus_sign = late_bus & 1
             late_bus_mag = late_bus & self.MASK29MAG
 
@@ -43,6 +45,7 @@ class g15d_PN:
             pn_new = sum_mag | sign_out
             pn_low = pn_new & self.MASK29BIT
             self.g15.drum.write(PN, word_time, pn_low)
+            self.g15.cpu.cpu_log.msg ("Sum.0="+signmag_to_str(pn_low) );		# @@@
 
             # overflow detect?  on single word adds on PN
             return
@@ -74,6 +77,9 @@ class g15d_PN:
                 print('     sum_mag=%08x' % sum_mag)
 
             carry_out = sum_mag >> 58
+            if carry_out > 0:							# @@@
+                self.g15.cpu.cpu_log.msg2 (" [carry_out=" + str(carry_out) + "] ") # @@@
+            
             sum_mag &= self.MASK58MAG      # remove any carry out
 
             sign_out = (late_bus_sign ^ pn_sign ^ carry_out) & 1
@@ -86,6 +92,7 @@ class g15d_PN:
 
             if self.overflow_detect(late_bus_sign, pn_sign, late_bus_mag, sum_mag, carry_out):
                 self.cpu.overflow = 1
+                self.g15.cpu.cpu_log.msg2 (" [overflow: "+str(late_bus_sign)+"."+str(pn_sign)+" "+hex(late_bus_mag)+"."+hex(sum_mag)+" "+str(carry_out)+"] ") # @@@
 
             if pn_new == 1:  # mimic Verilog bug,  allows -0 to slip into PN
                 pn_new = 0
@@ -98,12 +105,13 @@ class g15d_PN:
 
             self.g15.drum.write(PN, word_time, pn_high)
             self.g15.drum.write(PN, word_time + 1, pn_low)   # 2w track, drum needs positive word time index
+            self.g15.cpu.cpu_log.msg ("Sum="+signmag_to_str(pn_high)+"|"+signmag_to_str(pn_low) );		# @@@
 
     @staticmethod
     def overflow_detect(a_sign, b_sign, late_bus_mag, sum_mag, carry):
-        if (a_sign == b_sign) and carry and (a_sign == 0 or sum_mag == 0):
+        if (a_sign == b_sign) and carry and (a_sign == 0 or sum_mag == 0):  # gate 2b on simpdraw#27
             return 1
-        if late_bus_mag and (a_sign == b_sign) and (not carry) and a_sign:
+        if late_bus_mag and (a_sign == b_sign) and (not carry) and a_sign:  # gate 4 on simpdraw#27
             return 1
 
         return 0

@@ -105,7 +105,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 # clears AR (if standard format is used)
                 #
                 ar = self.g15.drum.read(AR, 0)
-                self.d31_special_print("TypeAR, numeric mode", g15d_d31.SPRINT_DONE)
+#                self.d31_special_print("TypeAR, numeric mode", g15d_d31.SPRINT_DONE)
                 self.g15.iosys.slow_out(DEV_IO_TYPE, AR)
                 return
 
@@ -135,8 +135,8 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # clears 19 (if standard format is used)
                 #
-                self.d31_special_print("Type19, numeric mode", g15d_d31.SPRINT_DONE)
-                print("total_instruction_count", self.cpu.total_instruction_count)
+#                self.d31_special_print("Type19, numeric mode", g15d_d31.SPRINT_DONE)
+#                print("total_instruction_count", self.cpu.total_instruction_count)
 
                 self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
                 return
@@ -149,6 +149,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 self.unverified_instruction()
 
+                self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
                 self.d31_special_print('punch line 19 to paper tape, need to implement', g15d_d31.SPRINT_DONE)
                 return
 
@@ -169,7 +170,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # permit numeric type-in
                 #
-                self.d31_special_print('activate numeric type-in', g15d_d31.SPRINT_DONE)
+#                self.d31_special_print('activate numeric type-in', g15d_d31.SPRINT_DONE)
 
                 self.g15.iosys.set_status(IO_STATUS_IN_TYPEWRITER)
                 return
@@ -308,7 +309,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                     m2 = self.g15.drum.read(M2, wt)
 
                     id = pn & m2
-                    pn &= ~m2
+                    pn = pn & (~m2)
                     
                     self.g15.drum.write(PN, wt, pn & MASK29BIT)
                     self.g15.drum.write(ID, wt, id & MASK29BIT)
@@ -341,21 +342,22 @@ class g15d_d31(G15Cpu_math.g15d_math):
             # get mq and id from drum
             reg_md = self.g15.drum.read_two_word(MQ, 0)
             reg_id = self.g15.drum.read_two_word(ID, 0)
-            reg_ar = self.g15.drum.read(AR, 0)
+            ar = signmag_to_comp2s (self.g15.drum.read(AR, 0))
 
             for j in range(instruction['t'] >> 1):
-                if reg_ar & (1 << 29):
-                    reg_ar = 0
-                    break
+                # rbk rewrote this
                 reg_md <<= 1
                 reg_md &= MASK58BIT
-                reg_ar += 2
                 reg_id >>= 1
+                ar += 1		# python integers in ar
+		   # it's the end-carry (result of incr =0) that stops the shift
+                if ar==0 and ch==0:
+                    break
 
             self.g15.drum.write_two_word(MQ, 0, reg_md)
             self.g15.drum.write_two_word(ID, 0, reg_id)
             if ch == 0:
-                self.g15.drum.write(AR, 0, reg_ar & MASK29BIT)
+                self.g15.drum.write(AR, 0, int_to_signmag(ar) )
             return
 
         elif instruction['s'] == 27:
@@ -367,19 +369,19 @@ class g15d_d31(G15Cpu_math.g15d_math):
             ch = instruction['ch'] & 3
             
             reg_mq = self.g15.drum.read_two_word(MQ, 0)
-            reg_ar = self.g15.drum.read(AR, 0)
+            #reg_ar = self.g15.drum.read(AR, 0)
+            ar = signmag_to_comp2s (self.g15.drum.read(AR, 0))
 
             for j in range(0, instruction['t'], 2):
                 if reg_mq & (1 << 57):
                     break
                 reg_mq <<= 1
                 reg_mq &= MASK58BIT
-                reg_ar += 2     # 1 (sign bit is in 2**0)
+                ar += 1     # Python integer in ar
 
             self.g15.drum.write_two_word(MQ, 0, reg_mq)
             if ch == 0:
-                self.g15.drum.write(AR, 0, reg_ar)
-
+                self.g15.drum.write(AR, 0, int_to_signmag(ar) )
             return
 
         elif instruction['s'] == 28:
@@ -448,14 +450,17 @@ class g15d_d31(G15Cpu_math.g15d_math):
         next_cmd_time = instruction['n']  # default case
         end_search = instruction['n']  # one beyond end
         if end_search < start_search: end_search += 108
+        self.cpu.cpu_log.msg2 ("RETURN: search range: " + str(start_search) + ".." + str(end_search) + "  ")	# @@@
         for wt in range(start_search, end_search):  # start_search..N-1 inclusive
             if (wt % 108) == marked_word:
                 if self.verbosity & VERBOSITY_D31_MARKRET:
-                    print("FOUND MARK for ", wt, "/", marked_word)
+                    print("FOUND MARK for ", wt, "/", marked_word)	# @@@
+                    self.cpu.cpu_log.msg("FOUND MARK for ". str(wt) +  "/" +  str(marked_word))	# @@@
                 next_cmd_time = marked_word
                 break
 
         instruction['next_cmd_word_time'] = next_cmd_time
+        self.cpu.cpu_log.msg ("RETURN to: " + str(next_cmd_time))			# @@@
 
         if self.verbosity & VERBOSITY_D31_MARKRET:
             print("\tRTMv0.33: xx-", instruction['time_end'], "  marked_word=", marked_word, " N=", instruction['n'],
@@ -471,6 +476,8 @@ class g15d_d31(G15Cpu_math.g15d_math):
             self.cpu.mark_time = instruction['loc'] + 1
 
         cmdLineMapped = cmd_line_map_names[instruction['next_cmd_line']]
+
+#        self.cpu.cpu_log.msg ("MARK set: " + str(self.cpu.mark_time))			# @@@
 
         if self.verbosity & VERBOSITY_D31_MARKRET:
             print("cmdLineMapped", cmdLineMapped)

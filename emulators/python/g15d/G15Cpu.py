@@ -293,7 +293,7 @@ class G15Cpu:
             if self.emul.music.music_enable:
                 time.sleep(TRACK_TIME / 1000000)
 
-        # at end of drum rev, check slow_out
+        # at end of drum rev, check slow_out (handles M19 print)
         rotate = False
         if instruction['time_end_last'] >= instruction['loc']:
             rotate = True

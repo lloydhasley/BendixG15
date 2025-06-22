@@ -48,7 +48,7 @@ class g15d_decode:
             20: 'Return',
             21: 'Mark',
             22: 'Test T1*AR',
-            23: {0: 'PG Clear', 3: 'PN*M2->ID, PN*!M2->MQ',  'default':'error'},
+            23: {0: 'PG Clear', 3: 'PN*M2->ID, PN*!M2->PN',  'default':'error'},
             24: 'Multiply',
             25: 'divide (ch=1)',
             26: 'shift',
@@ -198,9 +198,11 @@ class g15d_decode:
 
         str_l = instr_dec_hex_convert(instruction['loc'])
 
-        if instruction['deferred'] == 1:
+        if instruction['d'] == 31:
+            str_p = ' '
+        elif instruction['deferred'] == 1:
             str_p = 'w'
-        else:
+        else:       # immediate
             str_p = 'u'
 
         str_t = instr_dec_hex_convert(instruction['t'])

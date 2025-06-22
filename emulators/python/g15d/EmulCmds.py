@@ -53,6 +53,7 @@ class EmulCmds:
             ['help [cmds...]                          ; this help message',                     self.cmd_help],
             ['include <file>                          : execute command in file',               self.cmd_include],
             ['music <on|off>                          : enable music extraction',               self.cmd_music],
+            ['patch <addr> <new_value>                : store new_value into addr',             self.cmd_patch],    # to fix binaries
             ['pause                                   : wait for kybrd input',                  self.cmd_pause],
             ['ptr [mount <filename>]                  : paper tape reader',                     self.cmd_ptr],
             ['quit                                    : quit the g15d emulator',                self.cmd_quit],
@@ -375,6 +376,24 @@ class EmulCmds:
         self.help("music")
         return
 
+    def cmd_patch(self, args):
+        """ Patch a single hex value into an address """
+
+        if len(args) != 3:
+            print ("Usage: patch destaddr new_g15_sexadecimal_value")
+            return
+
+        patchaddr = int (args[1])
+        patchval = str_to_signmag(args[2])
+        track = int (patchaddr/100)
+        l1 = "{:02d}".format(track)
+        word = patchaddr%100
+        self.g15.drum.write (track, word, patchval)
+#        for a in range(word - 2, word + 2 + 1):
+#            a1 = "{:02d}".format(a)
+#            print (l1+a1+" = "+signmag_to_str( self.g15.drum.read(track, a)))
+        return
+
     def cmd_pause(self, args):
         """ Pause the emulator for N instructions """
 
@@ -385,6 +404,17 @@ class EmulCmds:
 
         self.emul.cmd_pause_count = intg15(args[1], 0)
         return
+
+    def cmd_ptp(self, args):
+        """ emulate paper tape punch """
+        ptp = self.g15.ptp
+
+        ll = len(args)
+        if ll <= 1:
+            ptp.status()
+            return
+
+
 
     def cmd_ptr(self, args):
         """

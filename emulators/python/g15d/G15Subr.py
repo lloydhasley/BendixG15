@@ -209,6 +209,13 @@ def signmag_to_comp2s_29(signmag):
 
     return num
 
+def signmag_to_comp2s(signmag):
+    ''' convert sign magnitude to python's 2s complement '''
+
+    sign = signmag & 1
+    mag = signmag >> 1
+    if sign == 0: return mag
+    return - ( (1<<28) - mag )
 
 def signmag_to_int(signmag):
     ''' convert sign magnitude notation to signed int notation '''
@@ -248,8 +255,7 @@ def signmag_plus_signmag(a, b):
     return total
 
 def int_to_signmag(value2s):
-    ''' convert signed int notation to sign magnitude notation '''
-
+    ''' convert python integer to G-15 sign magnitude '''
     if value2s >= 0:
         #if value2s & (1<<28):
         #    # have rollover
@@ -257,16 +263,13 @@ def int_to_signmag(value2s):
         #    sigmag = (val << 1) | 1
         #else:
         # positive number
-        sigmag = value2s << 1
-    else:
-        # negative number
-        value = -value2s
-        sigmag = value << 1
-        sigmag |= 1
-        sigmag &= MASK29BIT
-
-    return sigmag
-
+        return value2s << 1
+    # negative number
+    signmag = (-value2s) << 1
+    signmag = (1<<29) - signmag
+    signmag |= 1
+    signmag &= MASK29BIT
+    return signmag
 
 def wordtime_to_str(value):
     if value > 116:

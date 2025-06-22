@@ -90,22 +90,21 @@ class G15TypeNumeric:
 #                break
 
         # following handles output whose lines span multiple format statements
-        for c in ascii_str:
-            self.out_history[-1] += c
-            if c == '\n':
-                print("TYPEOUT: ", self.out_history[-1])
-                self.out_history.append('')
-        if len(self.out_history[-1]):
-            print("TYPEOUT: ", self.out_history[-1])
-
-        if False:
+        if self.g15.bkuker:
             for c in ascii_str:
-                self.out_history[-1].append(c)
+                self.out_history[-1] += c
                 if c == '\n':
-                    print("TYPEOUT: ", self.out_history[-1])
-                    self.out_history.append([])
-            if len(self.out_history[-1]):
-                print("TYPEOUT: ", self.out_history[-1])
+# @@@ don't know if this is too much commenting out...RBK
+#                    print("TYPEOUT1: ", self.out_history[-1])
+                    self.out_history.append('')
+#            if len(self.out_history[-1]):
+#                print("TYPEOUT2: ", self.out_history[-1])
+        else:
+            outbuffer = ''
+            for c in ascii_str:
+                self.out_history[-1] += c
+                outbuffer += c
+#            print("TYPEOUT3: ", outbuffer)
 
     def read(self):
         # characters from keyboard,

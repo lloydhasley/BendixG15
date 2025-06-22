@@ -59,7 +59,7 @@ else:
                 if c == 3:      # control-c
                     self.emul.quit()
 
-                print(c, end='')
+#                print(c, end='')
                 return c
             else:
                 return False

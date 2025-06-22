@@ -96,6 +96,7 @@ G15_DIGIT	= 0x10
 # io subsystem device io defs
 DEV_IO_TYPE = 8
 DEV_IO_PTR = 15
+DEV_IO_PTP = 10
 
 #IO_STATUS_READY	            = 0x00
 IO_STATUS_READY	            	= 0x10
@@ -131,11 +132,11 @@ io_status_str = {
 MASK29BIT = (1 << 29) - 1
 MASK58BIT = (1 << 58) - 1
 
-ioSym_to_Binary = {
-	'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-	'8': 8, '9': 9, 'u': 10, 'v': 11, 'w': 12, 'x': 13, 'y': 14, 'z': 15,
-	'-': 1, '\n': 2, '\t': 3, 'S': 4, 'R': 5, '.': 6, ' ': 0
-}
+#ioSym_to_Binary = {
+#	'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+#	'8': 8, '9': 9, 'u': 10, 'v': 11, 'w': 12, 'x': 13, 'y': 14, 'z': 15,
+#	'-': 1, '\n': 2, '\t': 3, 'S': 4, 'R': 5, '.': 6, ' ': 0
+#}
 hex2ascii = "0123456789uvwxyz"
 
 SIM_REQUEST_UNLOCK      = 0     # unloack and allow execution thread to run
