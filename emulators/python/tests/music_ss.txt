@@ -1,0 +1,48 @@
+#
+# script bendix music program
+#
+#####################################
+#
+# bring up the machine
+#
+#
+#####################################
+#
+# Load music program
+#
+ptr mount UP041_ss.pti
+
+#
+# loads base program
+#
+button dc on
+run  200
+
+#
+# load program 7900/7901
+#	(loads 2nd program following first one)
+switch enable on
+type p
+switch enable off
+
+run 100     # give time to read type and gate-typein
+#
+# load datafile
+#
+ptr mount ../../musictest/silent3.pti
+music on        # enable music extraction
+
+run 60
+
+type -5t/s
+run 30
+status cpu
+# dd 1:0:107
+# check that the user notes are installed
+# and the base notes are in place (display by music on command)
+
+run 2000
+
+status cpu
+
+quit

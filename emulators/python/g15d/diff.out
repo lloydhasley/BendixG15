@@ -1,0 +1,461 @@
+======== G15Ptr.py
+31c31
+<     def __init__(self, g15, tapedir=None, Verbosity=0x2):
+---
+>     def __init__(self, g15, tapes='.', Verbosity=0x2):
+33c33
+<         self.tapedir = tapedir
+---
+>         self.tapes = tapes
+39c39
+<         self.tape_dirname = 'tapes'
+---
+>         self.tape_name = ""
+41,42d40
+<         self.suffixes = ['', '.pt', '.pti', '.ptr']
+<         self.tape_paths = self.searchForTapesDirectory(tapedir)
+44,45d41
+<         print("tape-path=", self.tape_paths)
+< 
+51c47
+< 
+---
+>         #
+55,80d50
+<     def searchForTapesDirectory(self, tapedir):
+<         tape_paths = []
+<         if tapedir:
+<             tape_paths.append(tapedir)  # specified directory
+<         tape_paths.append('.')          # current directory
+< 
+<         # get python executable directory
+<         spath = os.path.abspath(__file__)
+<         sdir = os.path.dirname(spath)
+<         tape_paths.append(sdir)         # executable directory
+< 
+<         # search upward looking for "tapes" directory
+<         dir = os.path.dirname(sdir)
+<         while True:
+<             tdir = dir + '/' + self.tape_dirname
+<             if os.path.exists(tdir):
+<                 tape_paths.append(tdir + '/images') # found it
+<                 break
+<             dir = os.path.dirname(dir)
+<             print("dir=", dir)
+<             if dir == '/':      # all done
+<                 # no tapes directory dir tree
+<                 break
+< 
+<         return(tape_paths)
+< 
+115,116c85,86
+<         # make list of possible file names
+<         # not most efficient approach, but less confusing
+---
+>         dirs = [self.tapes + '/', './tapes/', './']
+>         suffixes = ['', '.pt', '.pti', '.ptr']
+118c88,99
+<         file_names = []
+---
+>         if self.tapes == '.':
+>             # no tape directory specified, so let's try to find it.
+>             # we assume executable is in the original directory structure
+>             while True:
+>                 dir = os.path.dirname(os.path.realpath(__file__))
+>                 fpath = dir + '/' + 'tapes'
+>                 if os.path.exists(fpath):
+>                     dirs.append(dir)
+>                     break
+>                 if dir == '/':
+>                     break
+> 
+120,121c101
+<             # an absolute path
+<             file_names.append(file_name)
+---
+>             fnames = [file_name]
+123,127c103,105
+<             # develop paths
+<             for dir in self.tape_paths:
+<                 for suffix in self.suffixes:
+<                     filename = dir + '/' + file_name + suffix
+<                     file_names.append(filename)
+---
+>             fnames = []
+>             for dir in dirs:
+>                 fnames.append(dir + file_name)
+129,136d106
+<         # filenames is a list of possible filenames
+<         # note: if user fname begins with / it is assumed to be complete path
+< 
+< #        print("file_names=", file_names)
+< #        print("will try to mount the following:")
+< #        for file_name in file_names:
+< #            print("\t", file_name)
+< 
+138,143c108,121
+<         for file_name in file_names:
+<             if self.verbosity & 1:
+<                 print('Trying to open file: ', self.file_name)
+<             try:
+<                 FileP = open(file_name, 'rb')
+<                 flag = 1
+---
+>         for fname in fnames:
+>             for suffix in suffixes:
+>                 self.tape_name = fname + suffix
+>                 if self.verbosity & 1:
+>                     print('Trying to open file: ', self.tape_name)
+> 
+>                 try:
+>                     FileP = open(self.tape_name, 'rb')
+>                     flag = 1
+>                     break
+>                 except IOError:
+>                     # print('Error:  Cannot open tape file: ', self.tape_name, ' for reading')
+>                     continue
+>             if flag:
+145,147d122
+<             except IOError:
+<                 # print('Error:  Cannot open tape file: ', self.tape_name, ' for reading')
+<                 continue
+149c124,126
+<         if flag == 0:
+---
+>         if flag:
+>             print('Tape: ', self.tape_name, ' has been mounted')
+>         else:
+153,154d129
+<         print('Tape: ', file_name, ' has been mounted')
+< 
+161a137,138
+>         bit1_count = 0
+>         bit5_count = 0
+178,179d154
+<             sum2 = self.checksum2(block)
+< 
+180a156
+> 
+185a162
+> 
+197c174
+<             print('\t\tblock #%2d' % block_content, ' has %3d' % len(block), ' words, checksum= ', signmag_to_str(sum2), numbertrack_str)
+---
+>             print('\t\tblock #%2d' % block_content, ' has %3d' % len(block), ' words, checksum= ', int_to_str(checksum), numbertrack_str)
+206c183,191
+<     def checksum2(self, block):
+---
+>     def checksum(self, block):
+>         '''
+>         :param block: 	block of tape data to be checksumed
+>         :return:
+>         '''
+>         sum = 0
+>         # j = range(34, 108)
+>         # j.extend(range(34))
+>         j = range(0, 108)
+208,216c193,196
+<         checksum = 0
+<         for word in block:
+<             value = word >> 1
+<             sign = word & 1
+<             if sign:
+<                 value = (~value) + 1
+<             value &= 0x1fffffff
+<             checksum += value
+<         checksum &= 0x1fffffff
+---
+>         for i in j:
+>             word = block[i]
+>             value = signmag_to_int(word)
+>             sum += value
+218,224c198,203
+<         # convert to sign mag
+<         chksum2 = (checksum << 1) | (checksum >> 28)
+<         chksum2 &= 0x1fffffff
+< 
+<         #outstr = signmag_to_str(chksum2)
+<         #print("chksum2=%x"% chksum2)
+<         # print("sum2c=", outstr)
+---
+>             if self.verbosity & VERBOSITY_PT_CHECKSUM:
+>                 str = int_to_str(sum)
+>                 print('i=', i, 'word value (+-dec)=', value, '/value-x=', int_to_str(value), 'temp checksum=', str)
+>                 word = int_to_signmag(sum)
+>                 str = signmag_to_str(word)
+>                 print(str)
+226c205
+<         return chksum2  # sign/mag
+---
+>                 sum &= 0x0fffffff
+227a207,210
+>         print('checksum', sum)
+> 
+>         return sum
+> 
+======== G15TypeNumeric.py
+78,80c78,80
+<         # list(filter(G15_WAIT.__ne__, outstr))
+<         # list(filter(G15_RELOAD.__ne__, outstr))
+<         # list(filter(G15_STOP.__ne__, outstr))
+---
+>         list(filter(G15_WAIT.__ne__, outstr))
+>         list(filter(G15_RELOAD.__ne__, outstr))
+>         list(filter(G15_STOP.__ne__, outstr))
+81a82,85
+>         # suppress leading zeros
+>         while outstr[0] == 0 or outstr[0] == 0x10:
+>             outstr = outstr[1:]
+> 
+83c87
+<         #self.output_history.append(ascii_str)
+---
+>         self.output_history.append(ascii_str)
+85,105c89,90
+<         # loading spaces
+< #        while True:
+< #            if ascii_str[0] == ' ':
+< #                ascii_str = ascii_str[1:]
+< #            else:
+< #                break
+< 
+<         # following handles output whose lines span multiple format statements
+<         if True:
+<             outbuffer = []
+<             for c in ascii_str:
+<                 self.out_history[-1] += c
+<                 outbuffer += c
+<             print("TYPEOUT: ", outbuffer)
+<         else:
+<             for c in ascii_str:
+<                 self.out_history[-1] += c
+<                 if c == '\n':
+<                     print("TYPEOUT: ", self.out_history[-1])
+<                     self.out_history.append('')
+<             if len(self.out_history[-1]):
+---
+>         for c in ascii_str:
+>             if c == '\n':
+106a92,96
+>                 self.out_history.append('')
+>             elif self.out_history[-1] == "":
+>                 self.out_history[-1] = c
+>             else:
+>                 self.out_history[-1] += c
+107a98,100
+>         if self.out_history[-1] != '':
+>             print("TYPEOUT: ", self.out_history[-1])
+> 
+======== EmulCmds.py
+389,399d388
+<     def cmd_ptp(self, args):
+<         """ emulate paper tape punch """
+<         ptp = self.g15.ptp
+< 
+<         ll = len(args)
+<         if ll <= 1:
+<             ptp.status()
+<             return
+< 
+< 
+< 
+======== G15Cpu_store.py
+28d27
+<         AR_add_sub = instruction['cmd_type'] & (CMD_TYPE_AD | CMD_TYPE_SU)
+50,55d48
+<             if AR_add_sub:
+<                 # eliminate -0
+<                 new_ar = self.g15.drum.read(AR, 0);
+<                 if new_ar == 1 and self.cpu.flop_is:
+<                     self.g15.drum.write(AR, 0);
+< 
+======== G15Cpu_ib.py
+125,127c125,127
+< #        if instruction['d']==AR or instruction['d']==AR_Plus:
+< #            if self.cpu.flop_is and (not self.cpu.flop_ic) and (intermediate_bus==1):
+< #                intermediate_bus = 0
+---
+>         if instruction['d']==AR or instruction['d']==AR_Plus:
+>             if self.cpu.flop_is and (not self.cpu.flop_ic) and (intermediate_bus==1):
+>                 intermediate_bus = 0
+======== G15Cpu_ar.py
+29,75d28
+<         self.add1(late_bus)
+< 
+<     def add0(self, late_bus):
+<         B30 = 1 << 29
+<         MASK29 = B30 - 1
+< 
+<         ar = self.g15.drum.read(AR, 0)
+<         arsign = ar & 1
+<         lbsign = late_bus & 1
+<         lbmag = late_bus & ~1
+<         sum = (ar & ~1) + lbmag
+<         carry = (sum & B30) > 0
+<         sum = sum & MASK29
+< 
+<         ch = self.cpu.instruction['ch']
+<         s = self.cpu.instruction['s']
+<         d = self.cpu.instruction['d']
+< 
+<         neg0   = False
+<         print (">>>>>>", ch, "<<<<<<");
+<         if late_bus == 1:			# addend (2nd no.) is -0?
+<             neg0 |= ch == 1		                    # 'AD'
+<             neg0 |= ch==3 and s<28 and d<28         # 'AVA'
+<         else:
+<             neg0 |= ch==3 and (s>=28 or d>=28)      # 'SU'
+<         uncorrectedsign = arsign ^ lbsign
+<         csign  = uncorrectedsign ^ (carry | neg0);
+<         fullsum= sum | csign        # complete 29bit word
+< 
+<         #
+<         # check for overflow
+<         overflow = 0
+<         if uncorrectedsign == 0:
+<             if neg0 and sum < 2:
+<                 overflow = 1	# neg0 -> endcarry=1
+<             if  carry      and (lbsign == 0 or  sum   == 0):
+<                 overflow = 2
+<             if (not carry) and  lbsign == 1 and lbmag != 0 :
+<                 overflow = 3
+<         if overflow:
+<             self.cpu.overflow = 1
+< 
+<         self.g15.drum.write(AR, 0, fullsum)
+<         return fullsum
+< 
+< 
+<     def add2(self, late_bus):
+======== EmulGetc.py
+67c67
+<             if k == '\n' or k == '\r':
+---
+>             if k == '\n':
+======== EmulAscii.py
+10c10,13
+< import os
+---
+> import select
+> import sys
+> import termios
+> import tty
+12,33c15,17
+< if os.name == 'nt':
+<     #Windows Version
+<     import msvcrt
+<     class EmulAscii():
+<         def __init__(self, emul):
+<             self.emul = emul
+<             self.open()
+<         def open(self):
+<             return
+<         def close(self):
+<             return
+<         def kbhit(self):
+<             if msvcrt.kbhit():
+<                 return msvcrt.getch().decode('ASCII')
+<             return False
+<             
+< else:
+<     #Linux Version
+<     import select
+<     import sys
+<     import termios
+<     import tty
+---
+> class EmulAscii():
+>     def __init__(self, emul):
+>         self.emul = emul
+35,38c19
+<     class EmulAscii():
+<         def __init__(self, emul):
+<             self.emul = emul
+<             self.open()
+---
+>         self.open()
+40,44c21,25
+<         def open(self):
+<             self.fd = sys.stdin.fileno()
+<             self.old_settings = termios.tcgetattr(self.fd)
+<     #        tty.setraw(sys.stdin.fileno())
+<             tty.setcbreak(sys.stdin.fileno())
+---
+>     def open(self):
+>         self.fd = sys.stdin.fileno()
+>         self.old_settings = termios.tcgetattr(self.fd)
+> #        tty.setraw(sys.stdin.fileno())
+>         tty.setcbreak(sys.stdin.fileno())
+46,49c27,30
+<         def close(self):
+<             # restore original terminal settings
+<             print("Restoring terminal settings")
+<             termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
+---
+>     def close(self):
+>         # restore original terminal settings
+>         print("Restoring terminal settings")
+>         termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
+51,52c32,35
+<             # above statement does not seem work on MAC
+<             os.system("stty sane")
+---
+>     def kbhit(self):
+>         rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+>         if rlist:
+>             c = sys.stdin.read(1)
+54,57c37,38
+<         def kbhit(self):
+<             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+<             if rlist:
+<                 c = sys.stdin.read(1)
+---
+>             if c == 3:      # control-c
+>                 self.emul.quit()
+59,60c40,43
+<                 if c == 3:      # control-c
+<                     self.emul.quit()
+---
+>             print(c, end='')
+>             return c
+>         else:
+>             return False
+62,66d44
+<                 print(c, end='')
+<                 return c
+<             else:
+<                 return False
+< 
+======== G15Cpu_pn.py
+======== G15Cpu_d31.py
+28c28
+<         # self.verbosity |= VERBOSITY_MATH_DIVIDE
+---
+> #        self.verbosity |= VERBOSITY_MATH_DIVIDE
+======== G15Cpu.py
+284d283
+<             self.te = te
+======== G15Io.py
+56,58c56,57
+<             if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+<                 if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
+<                     print('output=', self.outstr)
+---
+>             if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
+>                 print('output=', self.outstr)
+78c77
+<             print('Error: unsupported IO device, ignored:  status=0x%02x' % self.status)
+---
+>             print('Error: unsupported IO device, ignored')
+282,284c281,284
+<                 print('format3:= o%010o' % self.g15.drum.read(self.format_track, 3))
+<                 print('format2:= o%010o' % self.g15.drum.read(self.format_track, 2))
+<                 print('format1:= o%010o' % self.g15.drum.read(self.format_track, 1))
+---
+>                 print('format3:= 0x%08x' % self.g15.drum.read(self.format_track, 3))
+>                 print('format2:= 0x%08x' % self.g15.drum.read(self.format_track, 2))
+>                 print('format1:= 0x%08x' % self.g15.drum.read(self.format_track, 1))
+>                 print('format0:= 0x%08x' % self.g15.drum.read(self.format_track, 0))
+======== G15Subr.py
+148d147
+<     # print("signmap=%x"%signmag, " mag=%x" % mag)

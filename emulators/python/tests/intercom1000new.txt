@@ -1,0 +1,71 @@
+#####################################
+#
+# script runs intercom
+#
+#####################################
+#
+# bring up the machine
+#
+#####################################
+#verbosity cpu 2048     # ar debug
+
+ptr mount intercom_1000d_dg.pti
+button dc on
+
+# machine is up, NT loaded
+# switch compute go         # run G15 asynchronous to the cmd interface
+# switch compute center
+
+#####################################
+#  note: omit // if in manual mode
+# 50ADDR//ts    # store command starting at ADDR
+# 51ADDR//ts    # store fixed point data at ADDR  (2.37 entered as 2/37ts)
+# 52ADDR//ts    # store floating point data at ADDR (51237ts is equivalent of 2.37)
+# 69ADDR//ts    # start automatic operation
+# 670000//ts    # return to manual control
+# 39CH00ts      # punch CH onto paper tape
+# 55CH00ts      # read paper tape into CH
+# KOPADDR//ts   # obey any command
+#
+# to return to manual mode:
+#  BP <wait steady>, COMPUTE=OFF, EN-scf, GO   (bell should ring)
+###############################################
+
+run 250
+
+# enter program
+# dd 02:00:50
+type 500900ts     # enter commands
+run 2000
+type 421000ts       # clear&add <1000>
+run 2000
+type 431002ts       # add <1002>
+run 2000
+type 332100ts
+run 2000
+type 670000ts       # return to manual
+run 2000
+
+# dd 09:00:10
+# dd 02:00:50
+# enter data
+type 0670000//ts     # cmd input to manual
+run 2000
+type 0511000//ts     # enter fixed pt
+run 2000
+#type 4/23ts
+type  53/671875ts
+run 2000
+#type 0511002//ts     # enter fixed pt
+#run 2000
+type 5/77ts
+run 2000
+# dd 10:00:10
+
+# regs
+
+# run program
+type 0690900//ts     # run the program
+run 5000            # program should auto return to manual
+
+quit

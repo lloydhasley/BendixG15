@@ -59,6 +59,8 @@ class g15_ptape_subr:
 		return upper_str + lower_str
 
 	def sexDecStr2data(self, sexStr):
+		if len(sexStr) < 2:
+			sexStr = "0" + sexStr
 		upper = self.g15_hex.find(sexStr[0])
 		lower = int(sexStr[1])
 

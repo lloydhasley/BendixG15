@@ -656,7 +656,7 @@ class PaperTape(g15_ptape_subr, g15_ptape_verilog, g15_ptape_dis):
 	
 		# check if number track, create image		
 		self.Update()
-		
+
 	def PrintPtw(self, fout):
 		blockCount = 0
 		for block in self.Blocks:
@@ -841,13 +841,14 @@ class PaperTape(g15_ptape_subr, g15_ptape_verilog, g15_ptape_dis):
 			len_mod_4 = len(block) % 4
 			if len_mod_4 != 0:
 				# oops, not quad word aligned
-				block.append( [0] * (4 - len_mod_4))
+				for i in range(4 - len_mod_4):
+					block.append(0)
 
 			# add the data
 			quadword = 0
 			count = 0
 			length = len(block)
-			for word in reversed(block):				
+			for word in reversed(block):
 				word &= (1 << 29) - 1
 				quadword <<= 29
 				quadword |= word

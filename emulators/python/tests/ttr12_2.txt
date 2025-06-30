@@ -1,0 +1,47 @@
+
+#
+# run test routines #1
+
+verbosity drum 0
+verbosity cpu 0
+
+# verbosity drum VERBOSITY_DRUM_OP
+# verbosity cpu VERBOSITY_CPU_DETAILS
+
+button dc off
+switch enable off
+switch tape off
+switch compute off      # note compute or run, do not use both
+
+# mount test routines and turn machine on
+# ptr mount TAPES/lcm/ttr12.pti
+ptr mount ttr12_lcm.pti
+button dc on
+
+# wait for typewriter prompt
+run 100
+
+verify drum CN:0:107 0147x86w
+verify drum 19:0:107 0
+
+dd CN:0:107
+
+# select test routine #2
+set
+verify iostatus IO_STATUS_IN_TYPEWRITER
+type 0000005ts
+
+run 30 
+run 200
+
+verify iostatus IO_STATUS_IN_TYPEWRITER
+type 0000010ts
+
+run 3000
+
+status cpu
+status sim
+
+quit
+
+

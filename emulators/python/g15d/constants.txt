@@ -1,0 +1,111 @@
+#
+# common constants used by G15 emulator verify routines
+#
+set M0 0
+set M1 1
+set M2 2
+set M3 3
+set M4 4
+set M5 5
+set M6 6
+set M7 7
+set M8 8
+set M9 9
+set M10 10
+set M11 11
+set M12 12
+set M13 13
+set M14 14
+set M15 15
+set M16 16
+set M17 17
+set M18 18
+set M19 19
+set M20 20
+set M21 21
+set M22 22
+set M23 23
+set MQ 24
+set ID 25
+set PN 26
+set MZ 27
+set AR 28
+set CM 29
+set CN 30
+
+set IO_STATUS_READY             16
+set IO_STATUS_IN_TYPEWRITER     12
+set IO_STATUS_IN_PAPER_TAPE_IN  15
+
+set VERBOSITY_CPU_DETAILS       1
+set VERBOSITY_CPU_TRACE         2
+set VERBOSITY_CPU_MICRO_TRACE   4
+set VERBOSITY_CPU_DEBUG         8  # used for temporary debug prints
+set VERBOSITY_CPU_EARLY_BUS     16
+set VERBOSITY_CPU_INTERMEDIATE_BUS 32
+set VERBOSITY_CPU_LATE_BUS      64
+
+set VERBOSITY_DRUMP_CREATE      1
+set VERBOSITY_DRUM_OP           2
+set VERBOSITY_DRUM_PRECESS      4
+set VERBOSITY_DRUM_DETAILS      8
+#
+# common constants used by G15 emulator verify routines
+#
+set M0 0
+set M1 1
+set M2 2
+set M3 3
+set M4 4
+set M5 5
+set M6 6
+set M7 7
+set M8 8
+set M9 9
+set M10 10
+set M11 11
+set M12 12
+set M13 13
+set M14 14
+set M15 15
+set M16 16
+set M17 17
+set M18 18
+set M19 19
+set M20 20
+set M21 21
+set M22 22
+set M23 23
+set MQ 24
+set ID 25
+set PN 26
+set MZ 27
+set AR 28
+set CM 29
+set CN 30
+
+set IO_STATUS_READY	            	= 0x10
+set IO_STATUS_IN_TYPEWRITER     	= 0x0c
+set IO_STATUS_IN_PAPER_TYPE_IN  	= 0x0f
+set IO_STATUS_IN_CARDS          	= 0x0e
+set IO_STATUS_IN_MAG_TAPE       	= 0x0d
+set IO_STATUS_OUT_TYPE_L19      	= 0x09
+set IO_STATUS_OUT_PUNCH_L19     	= 0x0a
+set IO_STATUS_OUT_CARDS         	= 0x0b
+set IO_STATUS_OUT_AR            	= 0x08
+set IO_STATUS_OUT_MAG_TAPE      	= 0x01
+set IO_STATUS_SEARCH_MAG_FORWARD	= 0x05
+set IO_STATUS_SEARCH_MAG_REVERSE 	= 0x04
+
+set VERBOSITY_CPU_DETAILS       1
+set VERBOSITY_CPU_TRACE         2
+set VERBOSITY_CPU_MICRO_TRACE   4
+set VERBOSITY_CPU_DEBUG         8  # used for temporary debug prints
+set VERBOSITY_CPU_EARLY_BUS     16
+set VERBOSITY_CPU_INTERMEDIATE_BUS 32
+set VERBOSITY_CPU_LATE_BUS      64
+
+set VERBOSITY_DRUMP_CREATE      1
+set VERBOSITY_DRUM_OP           2
+set VERBOSITY_DRUM_PRECESS      4
+set VERBOSITY_DRUM_DETAILS      8
