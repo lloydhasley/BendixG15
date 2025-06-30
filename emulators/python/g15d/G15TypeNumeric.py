@@ -104,7 +104,7 @@ class G15TypeNumeric:
             for c in ascii_str:
                 self.out_history[-1] += c
                 outbuffer += c
-#            print("TYPEOUT3: ", outbuffer)
+            print("TYPEOUT: ", outbuffer)
 
     def read(self):
         # characters from keyboard,

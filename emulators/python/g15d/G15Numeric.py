@@ -14,6 +14,7 @@ import G15Drum          # drum memory
 import G15Cpu           # main cpu
 import G15Io            # io subsystem multiplexor
 import G15Ptr           # paper tape reader
+import G15Ptp           # paper tape punch
 import G15TypeNumeric   # numeric typewrite coupler
 import G15Cmds			# queue + G15 side of cmd handler
 from G15Constants import *
@@ -38,6 +39,9 @@ class G15Numeric:
         # All G15s had a paper tape reader (and punch) and a typewriter
         self.ptr = G15Ptr.G15Ptr(self, self.tapename)
         self.iosys.attach(DEV_IO_PTR, self.ptr, 'ptr')
+
+        self.ptp = G15Ptp.G15Ptp(self)
+        self.iosys.attach(DEV_IO_PTP, self.ptp, 'ptp')
 
         self.typewriter = G15TypeNumeric.G15TypeNumeric(self)       # initial G15 only had a numeric IO
         self.iosys.attach(DEV_IO_TYPE, self.typewriter, 'typewriter')

@@ -94,9 +94,9 @@ G15_WAIT	= 0x07
 G15_DIGIT	= 0x10
 
 # io subsystem device io defs
-DEV_IO_TYPE = 8
-DEV_IO_PTR = 15
-DEV_IO_PTP = 10
+DEV_IO_TYPE = 1
+DEV_IO_PTR = 2
+DEV_IO_PTP = 4
 
 #IO_STATUS_READY	            = 0x00
 IO_STATUS_READY	            	= 0x10

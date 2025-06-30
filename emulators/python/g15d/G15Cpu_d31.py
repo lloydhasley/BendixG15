@@ -105,7 +105,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 # clears AR (if standard format is used)
                 #
                 ar = self.g15.drum.read(AR, 0)
-#                self.d31_special_print("TypeAR, numeric mode", g15d_d31.SPRINT_DONE)
                 self.g15.iosys.slow_out(DEV_IO_TYPE, AR)
                 return
 
@@ -135,22 +134,21 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # clears 19 (if standard format is used)
                 #
-#                self.d31_special_print("Type19, numeric mode", g15d_d31.SPRINT_DONE)
-#                print("total_instruction_count", self.cpu.total_instruction_count)
 
                 self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
                 return
 
         elif instruction['s'] == 10:
-            if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
+#            if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
+            if instruction['ch'] == 0:
                 #
                 # punch line 19 to tape
                 # using format in line 02
                 #
+                print("Entering handler for special: 10:31, PTP")
                 self.unverified_instruction()
 
-                self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
-                self.d31_special_print('punch line 19 to paper tape, need to implement', g15d_d31.SPRINT_DONE)
+                self.g15.iosys.slow_out(DEV_IO_PTP, 19)
                 return
 
         elif instruction['s'] == 11:
@@ -350,7 +348,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 reg_md &= MASK58BIT
                 reg_id >>= 1
                 ar += 1		# python integers in ar
-		   # it's the end-carry (result of incr =0) that stops the shift
+		        # it's the end-carry (result of incr =0) that stops the shift
                 if ar==0 and ch==0:
                     break
 
@@ -397,7 +395,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             return
 
         elif instruction['s'] == 29:
-            #if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
             if instruction['ch'] == 0:
                 #
                 # test overflow
@@ -412,7 +409,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             return
             
         elif instruction['s'] == 31:
-            # if instruction['ch'] == 0 and (loc + 2) == instruction['t'] and (loc + 1) == instruction['n']:
             if instruction['ch'] == 0:
                 #
                 # take next command from AR
@@ -476,8 +472,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             self.cpu.mark_time = instruction['loc'] + 1
 
         cmdLineMapped = cmd_line_map_names[instruction['next_cmd_line']]
-
-#        self.cpu.cpu_log.msg ("MARK set: " + str(self.cpu.mark_time))			# @@@
 
         if self.verbosity & VERBOSITY_D31_MARKRET:
             print("cmdLineMapped", cmdLineMapped)

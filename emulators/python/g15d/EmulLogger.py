@@ -21,6 +21,7 @@ class EmulLogger:
         self.logout.write(text)     # write to logfile
 
     def flush(self):
+        sys.stdout.flush()
         pass
 
     def close(self):

@@ -59,6 +59,8 @@ class g15d_decode:
             31: 'Next Comm.fm.AR'
         }
 
+        self.MDSN = [24,25,26,27]       # multiply,divide,shift,normalize
+
         # initialize disassembler
         self.dissambly_label = "TRK LOC    HEX    P  T  N C  S  D BP    COMMENTS"
 
@@ -73,6 +75,9 @@ class g15d_decode:
         Disassemble the instruction
         Determine the start and end times for the instruction
         """
+#        if total_instruction_count == 2278:
+#            print("oh boy")
+        
         self.split(instruction)
         self.disassemble(instruction)
         self.determine_start_end_times(instruction)
@@ -105,6 +110,7 @@ class g15d_decode:
         instruction['bp'] = bits_extract(instruction_word, 1, 20)
         instruction['t'] = bits_extract(instruction_word, 7, 21)
         instruction['deferred'] = bits_extract(instruction_word, 1, 28)
+        
 
         # unusual source tracks
         if source in self.source_special_dict:
@@ -126,12 +132,25 @@ class g15d_decode:
         elif destination in self.destination_special_track_dict:
             destination_special = self.destination_special_track_dict[destination]
 
-        instruction["sspecial"] = source_special
-        instruction["dspecial"] = destination_special
+        instruction["sspecial"] = source_special        # label not num
+        instruction["dspecial"] = destination_special   # label not num
 
+
+
+        # if cmd is from WT=107, then N & T are 20 too high
+        # but if Multiply/divide/shift/normalize then N (not T) is 20 too high.
+        instruction['Ndisplay'] = instruction['n']  # in the trace we display
+        instruction['Tdisplay'] = instruction['t']  # N & T unaltered.
+        if False:
+            if instruction['loc'] == 107:
+                instruction['n'] -= 20
+                if instruction["d"] == 31 and instruction['s'] not in self.MDSN:
+                    instruction['t'] -= 20
+        
         # configure defaults for the next fetch (instructions may change during actual execution
         instruction['next_cmd_acc'] = 0
         instruction['next_cmd_word_time'] = instruction['n']
+        
 
         ######################################################
         #
@@ -159,18 +178,6 @@ class g15d_decode:
                 instruction['cmd_type'] = CMD_TYPE_AVA
             else:
                 instruction['cmd_type'] = CMD_TYPE_SU
-
-            #        s_track_4_word = source >= 20 and  source <= 23
-            #        s_track_2_word = source >= 24 and  source <= 26
-            #        s_acc = source == 28
-            #        d_track_long = destination <= 19
-            #        d_track_4_word = destination >= 20 and destination <= 23
-            #        d_track_2_word = destination >= 24 and destination <= 26
-            #        sd_track_2_word = s_track_2_word or d_track_2_word
-            #        sd_track_4_word = s_track_4_word or d_track_4_word
-            #        s_track_long = source <= 19
-            #        d_acc = destination == 28
-            #        d_track_31 = destination == 31
 
         return instruction
 
@@ -205,8 +212,8 @@ class g15d_decode:
         else:       # immediate
             str_p = 'u'
 
-        str_t = instr_dec_hex_convert(instruction['t'])
-        str_n = instr_dec_hex_convert(instruction['n'])
+        str_t = instr_dec_hex_convert(instruction['Tdisplay'])
+        str_n = instr_dec_hex_convert(instruction['Ndisplay'])
         str_c = '%1x' % instruction['ch']
         str_s = '%02d' % instruction['s']
         str_d = '%02d' % instruction['d']
@@ -237,7 +244,6 @@ class g15d_decode:
     def determine_start_end_times(self, instruction):
         if instruction["deferred"] == 0:
             # immediate instruction
-
             time_start = instruction['loc'] + 1
             relative = 0
 
@@ -258,9 +264,10 @@ class g15d_decode:
                 time_end = instruction["n"] + instruction["t"]
                 relative = 1
             else:
+                # 'regular' instruction
                 time_end = instruction["t"] - 1  # stops one before T
 
-            if self.verbosity & 1:
+            if self.verbosity & G15Cpu.VERBOSITY_CPU_DETAILS or instruction['loc']:
                 print('\timmediate, start time=', time_start, ' end time=', time_end)
         else:
             # deferred instruction
@@ -281,7 +288,7 @@ class g15d_decode:
                 else:
                     time_end = time_start
 
-            if self.verbosity & G15Cpu.VERBOSITY_CPU_DETAILS:
+            if self.verbosity & G15Cpu.VERBOSITY_CPU_DETAILS or instruction['loc']:
                 print('\tdeferred, start time=', time_start, ' end time=', time_end)
 
         # no instructions are suppose to originate from Loc==107
@@ -289,14 +296,26 @@ class g15d_decode:
         # so next T should be programmed 20 higher than normal.
         #   there may be other restrictions, but this one is stated pg 43 of the teory of operation
         # define MINUS_20_ADJ(a)         { a = (a<20) ? a+88 : a-20 ;}
-        if instruction['loc'] == 107:
-            # 1940 correction is only applied during WT == 107
-            # so if mark instr is at 107, then result is 20 less than specified
-            # --- if result < 0????  assume we add 108
-            instruction['next_cmd_word_time'] = self.minus_20_adj(instruction['next_cmd_word_time'])
-            if instruction['deferred']:
-                time_start = self.minus_20_adj(time_start)
-            time_end = self.minus_20_adj(time_end)
+        if True:
+            if instruction['loc'] == 107:
+                print("adjust loc  ", instruction['loc'])
+                # 1940 correction is only applied during WT == 107
+                # so if mark instr is at 107, then result is 20 less than specified
+                # --- if result < 0????  assume we add 108
+                print("adjust next_cmd_word_time  ", instruction['next_cmd_word_time'])
+                instruction['next_cmd_word_time'] = self.minus_20_adj(instruction['next_cmd_word_time'])
+#                if instruction['deferred']:
+                print("adjust next_cmd_word_time  ", instruction['next_cmd_word_time'])
+
+                print("adjust time_start from ", time_start)
+
+                if instruction["d"] == 31 and instruction['s'] not in self.MDSN:
+                    time_start = self.minus_20_adj(time_start)
+                print("adjust timeend from ", time_end)
+                print("adjust time_start from ", time_start)
+                time_end = self.minus_20_adj(time_end)
+                print("adjust timeend to ", time_end)
+                print("=======")
 
         time_start = (time_start + 108) % 108
         time_end = (time_end + 108) % 108

@@ -40,6 +40,7 @@ class G15Io:
         self.format_track = 0
         self.words_to_print = 0
         self.os = 0     # sign flag
+        self.punch_flag = 0
 
         self.format_i = 0       # pep8 happiness
 
@@ -74,6 +75,11 @@ class G15Io:
                 self.sign = 0
             self.status = IO_STATUS_OUT_TYPE_L19
 
+        elif status == IO_STATUS_OUT_PUNCH_L19:
+            if status == IO_STATUS_READY:
+                self.sign = 0
+            self.status = IO_STATUS_OUT_PUNCH_L19
+            
         else:
             print('Error: unsupported IO device, ignored:  status=0x%02x' % self.status)
             self.status = IO_STATUS_READY
@@ -210,14 +216,28 @@ class G15Io:
             print("device ", device)
             print("data_track ", data_track)
 
+        print("entering slowout")
+
+        # determine output device(s) and validate data selection
         status_flag = False
-        if device == DEV_IO_TYPE:
+        self.punch_flag = False
+        
+        if device & DEV_IO_TYPE:
             if data_track == AR:
                 self.set_status(IO_STATUS_OUT_AR)
                 status_flag = True
             elif data_track == M19:
                 self.set_status(IO_STATUS_OUT_TYPE_L19)
                 status_flag = True
+                
+        if device & DEV_IO_PTP and data_track == M19:
+            self.set_status(IO_STATUS_OUT_PUNCH_L19)
+            status_flag = True
+            self.punch_flag = True
+
+        # check if typewriter punch switch is on
+        if self.g15.cpu.sw_tape == 'punch':
+            self.punch_flag = True
 
         if self.verbosity & VERBOSITY_IO_SLOW_OUT:
             print("status_flag ", status_flag)
@@ -242,9 +262,13 @@ class G15Io:
     
     def slow_out_doit(self):
         # is slow out active?
+        
+        print("entering slowoutdotit")
+        
         end_flag = 0
         xlate = [						# @@@
-                      '_', '-', 'N', 'T', 'E', '/', '.', 'W',	# @@@
+#                      '_', '-', 'N', 'T', 'E', '/', '.', 'W',	# @@@
+                      '_', '-', 'C', 'T', 'S', '/', '.', 'W',	# @@@
                       '@', '@', '@', '@', '@', '@', '@', '@',	# @@@
                       '0', '1', '2', '3', '4', '5', '6', '7',	# @@@
                       '8', '9', 'u', 'v', 'w', 'x', 'y', 'z']	# @@@
@@ -315,12 +339,14 @@ class G15Io:
                 self.g15.drum.precess(self.data_track, 4)
 
                 nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
-                if self.zero_suppress and nibble == 0:
+                if self.zero_suppress and nibble == 0 and not self.punch_flag:
                     self.outstr.append(G15_SPACE)
                     print (" ", end='');				# @@@ actual output
                 else:
                     self.outstr.append(G15_DIGIT | nibble)
                     print (xlate[G15_DIGIT|nibble], end='')		# @@@ actual output
+                    if self.punch_flag:
+                        self.g15.ptp.punch(self.outstr)
                     #
                 if nibble != 0:
                     self.zero_suppress = 0
@@ -407,24 +433,36 @@ class G15Io:
             print_list_hex("outstr=", self.outstr)
 
         if end_flag:
-            if self.device == DEV_IO_TYPE:
+            print("endflag", end_flag)
+            if self.device & (DEV_IO_TYPE | DEV_IO_PTP):
                 if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                     print("outstr=", self.outstr)
+                    
                 self.os = 0
-                self.g15.typewriter.write(self.outstr)
+                
+                print("outstr=", self.outstr)
+                
+                if self.device & DEV_IO_TYPE:
+                    print("calling typewriter")
+                    self.g15.typewriter.write(self.outstr)
+                if self.punch_flag:
+                    print("calling punch")
+                    self.g15.ptp.punch(self.outstr)
                 self.set_status(IO_STATUS_READY)
+                
             self.slow_out_count = 0     # all done
 
     def slow_out_format(self, device, data_track):
         self.data_track = data_track
         self.device = device
         
+        print("entering slowoutformat, device=", device, ' track=', data_track)
+        
         self.outstr = []
 
-        if device == DEV_IO_TYPE:
+        self.enable_zero_suppress = 0
+        if (device & DEV_IO_TYPE) and not (device & DEV_IO_PTP):
             self.enable_zero_suppress = 1
-        else:
-            self.enable_zero_suppress = 0
 
         if data_track == AR:  # AR
             self.words_to_print = 1
@@ -442,7 +480,7 @@ class G15Io:
             
         self.slow_out_count = 1
             
-        return self.outstr
+        return
     #
     # convert G15 io tape codes to typewriter outputs
     #   includes ASCII conversionsts

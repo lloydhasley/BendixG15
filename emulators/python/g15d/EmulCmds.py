@@ -16,6 +16,7 @@ from G15Subr import *
 from G15Constants import *
 from EmulLogger import *
 from intg15 import intg15
+from printg15 import printg15
 
 
 PAUSE_CHECK_INTERVAL = 0.005        # default: 5ms
@@ -47,7 +48,7 @@ class EmulCmds:
         self.cmd_table = [
             ['button <on|off>                         : dc on/off (start/stop)',                self.cmd_button],
             ['dc <on|off>                             : dc on/off (start/stop)',                self.cmd_dc],
-            ['dd <<drum address>                      : display drum',                          self.cmd_dd],
+            ['dd <drum address>                       : display drum',                          self.cmd_dd],
             ["echo [args....]                         : perform basic unix stye echo function", self.cmd_echo],
             ["exit                                    : early exit from an include file",       self.cmd_exit],
             ['help [cmds...]                          ; this help message',                     self.cmd_help],
@@ -55,6 +56,9 @@ class EmulCmds:
             ['music <on|off>                          : enable music extraction',               self.cmd_music],
             ['patch <addr> <new_value>                : store new_value into addr',             self.cmd_patch],    # to fix binaries
             ['pause                                   : wait for kybrd input',                  self.cmd_pause],
+            ['peek <drum address>                     : display a single word on the drum',     self.cmd_peek],
+            ['poke <drum address> data                : write a word onto the drum',            self.cmd_poke],
+            ['ptp [write <filename>                   : paper tape punch',                      self.cmd_ptp],
             ['ptr [mount <filename>]                  : paper tape reader',                     self.cmd_ptr],
             ['quit                                    : quit the g15d emulator',                self.cmd_quit],
             ['regs                                    : dump regs, M23, part of M19',           self.cmd_regs],
@@ -132,7 +136,7 @@ class EmulCmds:
                 line = self.get_cmd(fin)
 
             if line is None:
-                print("ERRROR EMPYT LINE")
+                print("ERRROR EMPTY LINE")
                 break
 
             # save the line and execute the command
@@ -389,9 +393,6 @@ class EmulCmds:
         l1 = "{:02d}".format(track)
         word = patchaddr%100
         self.g15.drum.write (track, word, patchval)
-#        for a in range(word - 2, word + 2 + 1):
-#            a1 = "{:02d}".format(a)
-#            print (l1+a1+" = "+signmag_to_str( self.g15.drum.read(track, a)))
         return
 
     def cmd_pause(self, args):
@@ -405,6 +406,29 @@ class EmulCmds:
         self.emul.cmd_pause_count = intg15(args[1], 0)
         return
 
+    def cmd_peek(self, args):
+        """ read a single hex value into an address """
+        if len(args) != 2:
+            print("Usage: peek track:wordTime")
+            return
+
+        track, wordTime = self.parse_colon(args[1])
+        value = self.g15.drum.read(track, wordTime)
+
+        printg15("peek: track=%d, word=%d, data=0%x", track, wordTime, value)
+        return value
+
+    def cmd_poke(self, args):
+        """ place a single hex value into an address """
+        if len(args) != 3:
+            print("Usage: poke track:wordTime value")
+            return
+
+        track, word = self.parse_colon(args[1])
+        value = str_to_signmag(args[2])
+        self.g15.drum.write(track, word, value)
+        return
+
     def cmd_ptp(self, args):
         """ emulate paper tape punch """
         ptp = self.g15.ptp
@@ -414,7 +438,21 @@ class EmulCmds:
             ptp.status()
             return
 
+        # len is at least two
+        tokens = args[1:]
+        ll = len(tokens)
+        if ll == 1:
+            if tokens[0] == 'clear':
+                self.g15.ptp.clear()
+                return
+        if ll == 2:
+            if tokens[0] == 'write':
+                self.g15.ptp.write_file(tokens[1])
+                print("Punched paper tape written to file: ", tokens[1])
+                return
 
+        self.usage("ptp")
+        return
 
     def cmd_ptr(self, args):
         """

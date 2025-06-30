@@ -67,7 +67,7 @@ class CharIO:
             if k == '\n' or k == '\r':
                 line = self.buffer
                 self.buffer = ""
-                print("placing onto cmd queue: %s" % line)
+#                print("placing onto cmd queue: %s" % line)
 
                 self.q.put(line)
                 continue

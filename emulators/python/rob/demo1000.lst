@@ -1,0 +1,562 @@
+# original data:
+#               0,0,0,0,0,0,0,0,0,0,
+#               0,0,0,0,0,0,0,0,0,0,
+#               0,0,5,103,167,114,0,0,0,0,
+#               0,0,103,298,557,307,144,0,0,0,
+#               0,0,205,555,962,615,77,0,0,0,
+#               0,0,121,400,582,389,18,0,0,0,
+#               0,0,0,97,157,48,0,0,0,0,
+#               0,0,0,0,0,0,0,0,0,0,
+#               0,0,0,0,0,0,0,0,0,0,
+#               0,0,0,0,0,0,0,0,0,0
+
+# 1200-...: 'Data' -- input with nums <2*sigma compressed out
+#            [can fill line 12]
+1200: 103/0
+1202: 167/0
+1204: 114/0
+1206: 103/0
+1208: 298/0
+1210: 557/0
+1212: 307/0
+1214: 144/0
+1216: 205/0
+1218: 555/0
+1220: 962/0
+1222: 615/0
+1224: 121/0
+1226: 400/0
+1228: 582/0
+1230: 389/0
+1232: 157/0
+
+# 1300-1499 are (created) Energy: 100 values of generated (uncompressed) data
+
+# 1500-1507 S2mask[]: the four 32-bit masks for the sparse data
+#           only the first 100 bits should have non-zero values
+1500: 58720256/0        # decimal version of bit mask
+1502: 15744031/0        # "
+1504: 1/0       # "
+1506: 0/0       # "
+
+# 1508 is S4in_mask: specifying which of S2mask's elts are S4
+1508: 1024
+
+# S4mask:    1510..1517  [4 elts, generated]
+# S2temp:    1518
+# S4bit:     1520
+# S4input:   1522
+# r:         1524
+# c:         1526 & IndReg #2
+# sum:       1528
+# S4maskT    1530
+
+# CONSTANTS
+1540: 10/0      # ten
+1542: 0/0       # zero
+1544: 1/0       # one
+1546: 2/0       # two
+1548: 0/0       # magic number goes here
+1550: 524288/0  # magic factor
+1552: 128/0     # magic factor
+1554: 4194304/0 # magic factor
+1556: 0/1       # balancer to fix rounding on magic int()
+1558: 2048/0	# shift for starting value of S4mask
+
+# VARIABLES
+# i_data:    IndReg #3
+# i:         IndReg #1
+# i_mask:    IndReg #2
+# j:         IndReg #4
+# c:	     IndReg #5
+# Data:      1200..1299
+# Energy:    1300 [100 elements 1300..1498]
+# S4in_mask: 1508
+# S4mask:    1510..1517    [4 elts]
+# S2temp:    1518
+# S4bit:     1520
+# S4input:   1522
+# r:         1524
+# c:         1526 & IndReg #2
+# sum:       1528
+# S2mask:    1500..1507    [4 elts]
+# S4maskT    1530
+
+        # Initialize:
+         .42.1550       # build magic #  0900
+
+0900           .42.1550       # build magic #  0900
+0901           .44.1552       # build magic #  0901
+0902           .44.1554       # build magic #  0902
+0903           .49.1548       # store magic #  0903
+      
+                              #    for (int i = 0; i<100; i++) 
+                              #        Energy[i] = 0;
+      
+0904           .42.1542       # zero -> AR
+0905          1.75.0100       # channel limit
+0906          1.74.0100       # channel incr
+0907          1.73.0000       # channel base
+0908          1.72.0098       # limit
+0909          1.71.0002       # difference
+0910          1.70.0000       # word base
+0911          1.49.1300       # 0.0 -> Energy[i]
+0912          1.76.0911       # to top of loop
+0913          1.77.0910       # to reset word base; then loop
+      
+                              #    for (int i = 0; i<4; i++) 
+                              #        S4[i] = 0;
+      
+0914           .42.1542       # zero -> AR (redundant)
+0915          1.75.0000       # channel limit
+0916          1.74.0000       # channel incr
+0917          1.73.0000       # channel base
+0918          1.72.0006       # limit
+0919          1.71.0002       # difference
+0920          1.70.0000       # word base
+0921          1.49.1510       # 0.0 -> S4[i]
+0922          1.76.0921       # to top of loop
+      
+          # convert S4 mask to uncompressed
+      
+0923           .42.1508       # S4input = S4in_mask;  // likewise shifts 
+0924           .49.1522
+      
+                      # i = 0;   ' indexes Energy[i]
+      
+0925          1.75.0100       # channel limit
+0926          1.74.0100       # channel incr
+0927          1.73.0000       # channel base
+0928          1.72.0098       # limit
+0929          1.71.0002       # difference
+0930          1.70.0000       # word base
+      
+      			#    r = 1;
+      			#    c = 1;
+      			#    int i1 = 0;
+      			#    int i2 = 10;
+      			#    int i3 = 20;
+      			#    int i = 11;
+      
+                      # i_data = 0;    ' indexes Data (incr's slowly)
+0931          3.75.0000       # channel limit
+0932          3.74.0000       # channel incr
+0933          3.73.0000       # channel base
+0934          3.72.0098       # limit
+0935          3.71.0002       # difference
+0936          3.70.0000       # word base
+      
+                      # for 'j' later
+0937          4.75.0000       # channel limit
+0938          4.74.0000       # channel incr
+0939          4.73.0000       # channel base
+0940          4.72.0031       # limit
+0941          4.71.0001       # difference
+      
+                      # for (i_mask = 0; i_mask < 4; i_mask++) {
+                      #    i_mask counts through four 32-bit S2mask's
+      
+0942          2.75.0000       # channel limit
+0943          2.74.0000       # channel incr
+0944          2.73.0000       # channel base
+0945          2.72.0006       # limit
+0946          2.71.0002       # difference
+0947          2.70.0000       # word base
+      
+                              # S4bit = 1;
+      
+0948           .42.1544       # 1.0
+0949           .49.1520       # S4bit
+      
+                              #       S2temp = S2mask[i_mask];
+      
+0950          2.42.1500               # S2mask[i_mask]
+0951           .49.1518               # -> S2temp
+      
+                              #       for (int j = 0; j < 32; j++) {
+      
+0952          4.70.0000       # word base
+      
+                              #           if (S2temp & 1) 
+               
+      
+0953           .42.1518       # S2temp -> AR
+0954           .48.1546       # / 2.0
+0955           .43.1556       # +0.1 (to make int() work)
+0956           .43.1548       # + magic \
+0957           .41.1548       # - magic /  int(AR)
+0958           .44.1546       # * 2.0
+0959           .41.1518       # - S2tmp
+                      # at this point AR == -1 (odd) or 0 (even)
+0960           .23.0981       # 0 -> bit not on
+      
+                      #       {
+      
+                      #               if(S4input & 1) 
+      
+0961           .42.1522       # S4input -> AR
+0962           .48.1546       # / 2.0
+0963           .43.1556       # +0.1 (to make int() work)
+0964           .43.1548       # + magic \
+0965           .41.1548       # - magic /  int(AR)
+0966           .44.1546       # * 2.0
+0967           .41.1522       # - S4input
+                      # at this point AR == -1 (odd) or 0 (even)
+0968           .23.0972       # 0 -> bit not on
+      
+                      #               { S4mask[i_mask] += S4bit;
+      
+0969          2.42.1510       # S4mask[i_mask] -> AR
+0970           .43.1520       # + S4bit
+0971          2.49.1510       # -> S4mask[i_mask]
+      
+                      #               }
+      
+          
+                      #               Energy[i] = Data[i_data];
+      
+0972          3.42.1200       # Data[i_data] -> AR
+0973          1.49.1300       # -> Energy[i]
+      
+                      #               i_data++;
+0974          3.76.0975       # i_data++ (unusual branch as IndRegs go)
+          
+      
+                      #               S4input >>= 1;
+0975           .42.1522       # S4input -> AR
+0976           .48.1546       # /2
+0977           .43.1556       # +0.1 (to make int() work)
+0978           .43.1548       # + magic \
+0979           .41.1548       # - magic /  int(AR)
+0980           .49.1522       # -> S4input
+      
+                      #           }
+      
+          
+                      #           S2temp >>= 1;
+      
+0981           .42.1518       # S2temp -> AR
+0982           .48.1546       # /2
+0983           .43.1556       # +0.1 (to make int() work)
+0984           .43.1548       # + magic \
+0985           .41.1548       # - magic /  int(AR)
+0986           .49.1518       # -> S2temp
+      
+                      #           S4bit <<= 1;
+      
+0987           .42.1520       # S4bit -> AR
+0988           .44.1546       # * 2
+0989           .49.1520       # -> S4bit
+      
+                      #           i++;
+      
+0990          1.76.0993       # i++; skip channel incr if below lim
+0991          1.70.0000
+0992          1.77.0993       # channel incr.
+      
+                              #   } # (for j)
+0993          4.76.0953       # j++; back to top of loop
+      
+                              # } .. i_mask (IR#2)
+0994          2.76.0948       # i_mask++; back to top of i_mask loop
+      
+      ######################################################################
+      
+                      # printf("Reconstructed sensor input:\n");
+      
+                      # k = 0;                [IR #2]
+0995          1.75.0100       # channel limit
+0996          1.74.0100       # channel incr
+0997          1.73.0000       # channel base
+0998          1.72.0098       # limit
+0999          1.71.0002       # difference
+1000          1.70.0000       # word base
+      
+                      # for c, later
+1001          5.75.0000       # channel limit
+1002          5.74.0000       # channel incr
+1003          5.73.0000       # channel base
+1004          5.72.0018       # limit
+1005          5.71.0002       # difference
+      
+                      # for (int r = 0; r < 10; r++) {
+      
+                      # r = 0
+1006           .42.1542       # 0 -> AR
+1007           .49.1524       # -> r
+      
+          
+                      # printf("%2d: ", r);
+1008           .33.1524       # print r
+      
+                      #     c = 0
+1009          5.70.0000       # word base
+      
+                      #    for (; c < 10; c++) {
+      
+                      #       printf("%5d", Energy[k]);
+1010          1.33.1300       # type Energy[k]
+      
+                              #       k++;
+1011          1.76.1014
+1012          1.70.0000
+1013          1.77.1014
+      
+                      #    } 
+1014          5.76.1010       # increment & loop back
+               
+                      #    printf("\n");
+1015           .30.0001       # CR
+      
+                      # } [r]
+                      #   r++
+1016           .42.1524       # r -> AR
+1017           .43.1544       # +1 -> AR
+1018           .49.1524       # -> r
+              
+                              #       if (r < 10) goto 1008
+1019           .41.1540       # r - 10 -> AR
+1020           .22.1008       # loop if < 0
+      
+      ############# sumcluster ###################################
+      
+1021  #        .98.0001       # trace on! [rbk intercom 1000]
+      
+                              #    r = c = 1;
+1021           .42.1544       # 1->AR
+1022           .49.1524       # -> r
+1023           .49.1526       # -> c
+      
+                              #    int i1 = 0;
+      
+1024          7.75.0300       # channel limit (irrelevant)
+1025          7.74.0100       # channel incr
+1026          7.73.0000       # channel base
+1027          7.72.0099       # limit
+1028          7.71.0002       # difference
+1029          7.70.0000       # word base
+      
+                              #    int i2 = 10;
+      
+1030          8.75.0300       # channel limit (irrelevant)
+1031          8.74.0100       # channel incr
+1032          8.73.0000       # channel base
+1033          8.72.0099       # limit
+1034          8.71.0002       # difference
+1035          8.70.0020       # word base
+      
+                              #    int i3 = 20;
+      
+1036          9.75.0300       # channel limit (irrelevant)
+1037          9.74.0100       # channel incr
+1038          9.73.0000       # channel base
+1039          9.72.0099       # limit
+1040          9.71.0002       # difference
+1041          9.70.0040       # word base
+      
+      			#    S4mask[0] >>= 11;	' /= 2048
+      
+1042           .42.1510	# S4mask[0] -> AR
+1043           .48.1558	# / 2048
+1044           .49.1510	# -> S4mask[0]
+      
+                              #    for (int i_mask = 0; i_mask < 4; i_mask++) {
+      
+                              #    i_mask:
+1045          2.75.0000       # channel limit
+1046          2.74.0000       # channel incr
+1047          2.73.0000       # channel base
+1048          2.72.0006       # limit
+1049          2.71.0002       # difference
+1050          2.70.0000       # word base
+      
+      		        # j:
+1051          3.75.0000       # channel limit
+1052          3.74.0000       # channel incr
+1053          3.73.0000       # channel base
+1054          3.72.0031       # limit
+1055          3.71.0001       # difference
+      
+      			#     jstart = 11;
+      
+1056          3.70.0011       # jstart is higher for first time through
+      
+          
+      
+1057  #         .31.1104       # tracing!
+1057  #        2.31.0000       # tracing! [i_mask]
+1057  #        2.33.1510       # tracing! [S4mask value]
+      
+                              #        S4maskT = S4mask[i_mask];
+1057          2.42.1510       # S4mask[i_mask] -> AR
+1058           .49.1530       # -> S4maskT
+      
+                              #       for (int j = jstart; j < 32; j++) {
+      
+          
+      
+1059  #         .31.1111       # tracing 
+1059  #        3.31.0000       # tracing j
+1059  #        8.33.1302       # show E[i2+1] == cell of interest
+1059  #         .30.0001
+      
+                              #            if (S4maskT & 1) { // S4 cluster ?
+1059           .42.1530       # S4maskT -> AR
+1060           .48.1546       # / 2
+1061           .43.1548       # + magic \
+1062           .41.1548       # - magic /  int(AR)
+1063           .44.1546       # * 2
+1064           .43.1556       # +0.1 (to make int() work)
+1065           .41.1530       # - S4maskT     (neg means bottom bot was 1)
+1066           .20.1080       # 
+      
+1067  #         .31.1114       # tracing!
+1067  #        7.31.0000       # tracing: i1
+1067  #        8.31.0000       # tracing: i2
+1067  #        9.31.0000       # tracing: i3
+      
+                              #               int sum =
+                              #                         Energy[i1]
+                              #                       + Energy[i1+1]
+                              #                       + Energy[i1+2]
+                              #                       + Energy[i2]
+                              #                       + Energy[i2+1]
+                              #                       + Energy[i2+2]
+                              #                       + Energy[i3]
+                              #                       + Energy[i3+1]
+                              #                       + Energy[i3+2];
+1067          7.42.1300       #   E[i1] -> AR
+      
+1068  #        .31.1115       # tracing!
+      
+1068          7.43.1302       # + E[i1+1]
+1069          7.43.1304       # + E[i1+2]
+1070          8.43.1300       # + E[i2]
+1071          8.43.1302       # + E[i2+1]
+1072          8.43.1304       # + E[i2+2]
+1073          9.43.1300       # + E[i3]
+1074          9.43.1302       # + E[i3+1]
+1075          9.43.1304       # + E[i3+2]
+1076           .49.1528       # -> sum
+      
+                              #                printf("cluster @ %d:%d: total energy=%d\n", r, c, sum);
+      
+1077           .33.1524 	# r
+1078           .33.1526	# c
+1079           .38.1528	# sum
+      
+                              #           }
+          
+                              #            S4maskT >>= 1;
+1080           .42.1530       # S4maskT -> AR
+1081           .48.1546       # / 2
+1082           .43.1548       # + magic \
+1083           .41.1548       # - magic /  int(AR)
+1084           .43.1556       # +0.1 (to make int() work)
+1085           .49.1530       # -> S4maskT
+      
+                              #           i1++;
+1086          7.76.1089
+1087          7.70.0000
+1088          7.77.1089
+          
+      
+                              #           i2++;
+1089          8.76.1092
+1090          8.70.0000
+1091          8.77.1092
+          
+                              #           i3++;
+1092          9.76.1095
+1093          9.70.0000
+1094          9.77.1095
+          
+      
+      
+1095          1.76.1098
+1096          1.70.0000
+1097          1.77.1098
+          
+                              #           if (++c >= 10) {
+      
+1098           .42.1526       # c -> AR
+1099           .43.1544       # +1
+1100           .49.1526       # -> c
+      
+1101  #         .31.2222	# tracing!
+1101  #         .33.1526	# c
+      
+1101           .41.1540       # -10 .. negative means test fail
+1102           .22.1110
+      
+                              #               c = 0;
+      
+      
+1103           .42.1542       # 0 -> AR
+1104           .49.1526       # -> c
+      
+                              #               r++;
+1105           .42.1524       # r -> AR
+1106           .43.1544       # +1
+1107           .49.1524       # -> r
+1108           .41.1540	# AR -= 10
+1109           .20.1113	# goto 1113 if AR >= 0 (r >= 10)
+      
+                              #           }
+          
+      
+                              # j++
+      
+1110          3.76.1059
+1111          3.70.0000	#     jstart = 0
+      
+                              #       } # for (j)
+      
+                              #     }  # for (i_mask)
+      
+1112          2.76.1057       
+      
+          
+      
+1113           .30.0001       # extra carriage return
+1114           .31.0880       # print '0888' to signal done
+1115           .30.0001       # extra carriage return
+1116           .63.0000       # bell
+1117           .67.0000       # halt
+      
+      ####### Symbol Table #################################################
+              # c:         IndReg #2 & 1526
+              # Data:      1200
+              # Energy:    1300 [100 elements 1300..1498]
+              # i_data:    IndReg #3
+              # i:         IndReg #1
+              # i1:        IndReg #7
+              # i2:        IndReg #8
+              # i3:        IndReg #9
+              # i_mask:    IndReg #2
+              # j:         IndReg #4
+              # One:       1544
+              # r:         1524
+              # S2mask:    1500    [4 elts]
+              # S2temp:    1518
+              # S4bit:     1520
+              # S4in_mask: 1508
+              # S4input:   1522
+              # S4mask:    1510    [4 elts]
+              # S4maskT:   1530
+              # sum:       1528
+              # ten:       1540
+              # tenth:     1556
+              # Two:       1546
+              # Zero:      1542
+      # CONSTANTS
+      # 1540 10/0      # ten
+      # 1542 0/0       # zero
+      # 1544 1/0       # one
+      # 1546 2/0       # two
+      # 1548 M A G I C        # maximum int value
+      # 1550 524288/0  # magic factor
+      # 1552 128/0     # magic factor
+      # 1554 4194304/0 # magic factor
+      # 1556 0/1       # balancer to fix rounding on magic int()
+      ######################################################################

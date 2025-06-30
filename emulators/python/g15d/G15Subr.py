@@ -310,9 +310,9 @@ def bits_extract(word, width, offset):
 #
 def instr_dec_hex_convert(number):
     #
-    if number > 116:  # beyond range of S/D
-        return "ER"
-    else:
+#    if number > 116:  # beyond range of S/D
+#        return "ER"
+#    else:
         FirstDigit = int(number / 10)
         SecondDigit = number % 10
         #

@@ -59,7 +59,15 @@ class g15d_store:
 
             # if late_bus & (MASK29BIT - 1):	# ignore sign bit
             if late_bus:        # all bits including sign bits
+                #print('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
+                #print('latebus: n', instruction['n'])
                 instruction['next_cmd_word_time'] = instruction['n'] + 1
+                if instruction['loc'] == 107:
+                    instruction['next_cmd_word_time'] -= 20
+                    instruction['next_cmd_word_time'] += 108
+                    instruction['next_cmd_word_time'] %= 108
+                    
+                #print('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
 
             if instruction['s'] < 28 and instruction['dp'] == 0 and instruction['ch'] == 2:
                 data = self.g15.drum.read(instruction['s'], word_time)

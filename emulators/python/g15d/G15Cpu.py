@@ -210,7 +210,7 @@ class G15Cpu:
                 
     def sw_compute_h(self, value):
         self.halt_status = 0
-        print("compute sw: instr=", self.instruction)
+        # print("compute sw: instr=", self.instruction)
         self.sw_compute = value
         if value == "bp":
             self.sw_compute_bp_enable = 1
@@ -290,8 +290,11 @@ class G15Cpu:
 
         # add drum revolution pause if we are playing music
         if self.g15.drum.revolution_check(time_end % 108):
-            if self.emul.music.music_enable:
-                time.sleep(TRACK_TIME / 1000000)
+            try:
+                if self.emul.music.music_enable:
+                    time.sleep(TRACK_TIME / 1000000)
+            except:
+                pass
 
         # at end of drum rev, check slow_out (handles M19 print)
         rotate = False
@@ -381,9 +384,11 @@ class G15Cpu:
                 print("Copying line: ", source, " to line: ", destination)
 
         # check if music is playing and copying a new note into a track
-        if self.emul.music.music_enable and exec_length == 108:
-            self.g15.emul.music.trackcopy(instruction)
-
+        try:
+            if self.emul.music.music_enable and exec_length == 108:
+                self.g15.emul.music.trackcopy(instruction)
+        except:
+            pass
     #
     # take 29 bit word, return signed integer, and a string
     @staticmethod
@@ -441,9 +446,9 @@ class G15Cpu:
         #
         # display next instruction
         #
-        next_instr_dict = copy.deepcopy(self.instruction)
-        next_instr_dict['instr'] = self.g15.drum.read(cmd_track, self.instruction['next_cmd_word_time'])
-        print("*** TURN ON DISASSEMBLY OF NEXT INSTRUCTION")
+#        next_instr_dict = copy.deepcopy(self.instruction)
+#        next_instr_dict['instr'] = self.g15.drum.read(cmd_track, self.instruction['next_cmd_word_time'])
+#        print("*** TURN ON DISASSEMBLY OF NEXT INSTRUCTION")
         
         #
         # $ of insturctions executed to date

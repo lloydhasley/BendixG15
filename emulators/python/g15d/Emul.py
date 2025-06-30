@@ -17,6 +17,8 @@ Futures:
    paper tape punch is not modelled, but planned
    magnetic tape is not modelled, but planned
 """
+MUSIC=False
+
 import queue
 import threading
 from time import sleep
@@ -27,7 +29,8 @@ from EmulLogger import *
 import EmulAscii
 import EmulCmds
 from G15Constants import *
-import EmulMusic
+if MUSIC:
+    import EmulMusic
 import EmulGetc
 
 known_g15_configurations = {
@@ -64,7 +67,8 @@ class Emulator:
         self.getc = EmulGetc.CharIO(self)
         self.g15.bkuker = args.bkuker
 
-        self.music = EmulMusic.EmulMusic(self.g15)
+        if MUSIC:
+            self.music = EmulMusic.EmulMusic(self.g15)
 
         # queue for messages across thread boundary
         self.qcmd = queue.Queue()	        # cmds -> cpu
@@ -108,6 +112,8 @@ class Emulator:
         # G15 runs in its own thread
         # #    old, G15 now runs in the background thread,
     	# runflag will exit the thread
+        halted_flag = 0
+
         while self.runflag:
             # note: runflag = 0 will cause thread to exit
 
@@ -136,9 +142,13 @@ class Emulator:
             if self.number_instructions_to_execute:
                 ok2run = 1
             if self.cpu.halt_status:
-                print("Machine is halted!")
+                if not halted_flag:
+                    print("Machine is halted!")
+                halted_flag = 1
                 ok2run = 0
                 self.number_instructions_to_execute = 0		# early termination of "run"
+            else:
+                halted_flag = 0
 
             # execute an instruction
             if ok2run:
@@ -162,7 +172,10 @@ class Emulator:
     def quit(self):
         print("Quitting Emulator")
         self.runflag = 0    # stops execution loop AND getchar loop
-        self.music.close()
+        try:
+            self.music.close()
+        except:
+            pass
         sleep(0.2)
         self.ascii.close()
         sys.exit(0)

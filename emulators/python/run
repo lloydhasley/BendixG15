@@ -90,7 +90,7 @@ fi
 
 # recurse upward until tapes directory is located
 if [ ! -e $TAPEDIR ] ; then
-  while True
+  while true
   do
     curdir=`pwd`
     if [[ $curdir == '/' ]] ; then
@@ -123,4 +123,4 @@ cd $CPWD
 echo $PYTHON $EMULATOR $LOGFILE $COMPARE -t $TAPES $RUNSCRIPT
 time $PYTHON $EMULATOR $LOGFILE $COMPARE -t $TAPES $RUNSCRIPT
 
-# stty sane
+stty sane

@@ -81,13 +81,15 @@ class g15d_log:
 
         lstr1 = str1 + ":" + str22 + ":" + str3 + "-" + str4 + ": " + str7 + ' :' + str5 + ':' + str2 + ':'
 
-        if instruction['deferred']:
+        if instruction['d'] == 31:
+            str8 = "   "
+        elif instruction['deferred']:
             str8 = "  w"
         else:
             str8 = "  u"
 
-        str9 = instr_dec_hex_convert(instruction['t'])
-        str10 = instr_dec_hex_convert(instruction['n'])
+        str9 = instr_dec_hex_convert(instruction['Tdisplay'])
+        str10 = instr_dec_hex_convert(instruction['Ndisplay'])
         str11 = "%1d" % instruction['ch']
         str12 = instr_dec_hex_convert(instruction['s'])
         str13 = instr_dec_hex_convert(instruction['d'])

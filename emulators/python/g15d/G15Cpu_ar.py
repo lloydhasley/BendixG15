@@ -59,10 +59,15 @@ class g15d_AR:
         if uncorrectedsign == 0:
             if neg0 and sum < 2:
                 overflow = 1	# neg0 -> endcarry=1
-            if  carry      and (lbsign == 0 or  sum   == 0):
+            if  carry      and (lbsign == 0  or  sum == 0):
                 overflow = 2
-            if (not carry) and  lbsign == 1 and lbmag != 0 :
-                overflow = 3
+            ic = False
+            if lbmag > 0:
+                ic = ch==1 and lbsign                                   # gate 3 p.26
+                ic = ic or (ch==3 and s<28 and d<28) and lbsign         # gate 3 p.26
+                ic = ic or (ch==3 and (s>=28 or d>=28) and lbsign==0 )  # gate 4 p.26
+                if (not carry) and  lbsign == 1 and lbmag != 0 and ic : # gate 3 p.27
+                    overflow = 3
         if overflow:
             self.cpu.overflow = 1
 

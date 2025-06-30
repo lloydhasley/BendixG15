@@ -34,7 +34,7 @@ class G15Ptp:
         self.verbosity = Verbosity
 
                        #  0123456789uvwxyz
-        self.sym2ascii = " -CTSR.w--------0123456789UVWXYZ"
+        self.sym2ascii = " -CTSR.W--------0123456789uvwxyz"
         self.addNewLine = {'S':2, 'R':1, '/':1}
 
         # paper tape contents
@@ -43,7 +43,18 @@ class G15Ptp:
         if self.verbosity & VERBOSITY_PTP_DEBUG:
             print('\tPaper tape Punch Attached')
 
-    def punch(self, symbol):
+    def clear(self):
+        self.tape_contents = []
+
+    def punch(self, outstr):
+#        if len(outstr) == 1:
+#            self.punch(outstr)
+#        else:
+        for c in outstr:
+            self.punch_symbol(c)
+            
+    def punch_symbol(self, symbol):
+        print(' entering punch_symbol, symbol=0x%02x' % symbol)
         symbol &= 0x1f
         symbol = self.sym2ascii[symbol]
         self.tape_contents.append(symbol)
@@ -60,7 +71,9 @@ class G15Ptp:
     def count(self):
         return len(self.tape_contents)
 
-    def status(self):
+    def Status(self):
         print("Paper Tape Punch:")
         print("\tCharacters punched:", self.count())
+        print("\t\tand waiting in the PtP buffer:")
+
 
