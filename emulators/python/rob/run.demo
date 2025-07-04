@@ -548,10 +548,13 @@ run 150
 type 0670000ts
 run 150
 status cpu
-type 03909u0//ts
+# type 03909u0//ts
 run 150
 status ptp
+# starts automatic
 type 0690900//ts
 # run 300000
-
+run 300000
+ptp punch 9-12
+ptp write irob912.txt
 quit

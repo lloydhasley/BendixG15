@@ -109,10 +109,11 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 return
 
         elif instruction['s'] == 9:
-            if loc + 2 >= 108:
-                loctest = loc + 2 - 108 + 20
-            else:
-                loctest = loc + 2
+#            if loc + 2 >= 108:
+#                loctest = loc + 2 - 108 + 20
+#            else:
+#                loctest = loc + 2
+            loctest = (loc + 2) % 108
                 
             if instruction['ch'] == 4 and instruction['s'] == 9 and (loc + 5) == instruction['t']:
                 #
@@ -329,34 +330,65 @@ class g15d_d31(G15Cpu_math.g15d_math):
             return
 
         elif instruction['s'] == 26:
-            #
-            # shift MQ left and ID right under control of command
-            #  (1/2 of T)
-            #
-            # rotate mq and id left until AR=0
-            #  subject limit of T
-            ch = instruction['ch'] & 3
+            if False:
+                #
+                # shift MQ left and ID right under control of command
+                #  (1/2 of T)
+                #
+                # rotate mq and id left until AR=0
+                #  subject limit of T
+                ch = instruction['ch'] & 3
 
-            # get mq and id from drum
-            reg_md = self.g15.drum.read_two_word(MQ, 0)
-            reg_id = self.g15.drum.read_two_word(ID, 0)
-            ar = signmag_to_comp2s (self.g15.drum.read(AR, 0))
+                # get mq and id from drum
+                reg_md = self.g15.drum.read_two_word(MQ, 0)
+                reg_id = self.g15.drum.read_two_word(ID, 0)
+                reg_ar = self.g15.drum.read(AR, 0)
 
-            for j in range(instruction['t'] >> 1):
-                # rbk rewrote this
-                reg_md <<= 1
-                reg_md &= MASK58BIT
-                reg_id >>= 1
-                ar += 1		# python integers in ar
-		        # it's the end-carry (result of incr =0) that stops the shift
-                if ar==0 and ch==0:
-                    break
+                for j in range(instruction['t'] >> 1):
+                    if reg_ar & (1 << 29):
+                        reg_ar = 0
+                        break
+                    reg_md <<= 1
+                    reg_md &= MASK58BIT
+                    reg_ar += 2
+                    reg_id >>= 1
 
-            self.g15.drum.write_two_word(MQ, 0, reg_md)
-            self.g15.drum.write_two_word(ID, 0, reg_id)
-            if ch == 0:
-                self.g15.drum.write(AR, 0, int_to_signmag(ar) )
-            return
+                self.g15.drum.write_two_word(MQ, 0, reg_md)
+                self.g15.drum.write_two_word(ID, 0, reg_id)
+                if ch == 0:
+                    self.g15.drum.write(AR, 0, reg_ar & MASK29BIT)
+                return
+
+            else:
+                #
+                # shift MQ left and ID right under control of command
+                #  (1/2 of T)
+                #
+                # rotate mq and id left until AR=0
+                #  subject limit of T
+                ch = instruction['ch'] & 3
+
+                # get mq and id from drum
+                reg_md = self.g15.drum.read_two_word(MQ, 0)
+                reg_id = self.g15.drum.read_two_word(ID, 0)
+                ar = signmag_to_comp2s (self.g15.drum.read(AR, 0))
+
+                for j in range(0, instruction['t'], 2):
+                    # rbk rewrote this
+                    reg_md <<= 1
+                    reg_md &= MASK58BIT
+                    reg_id >>= 1
+                    if ch == 0:         # {PRM:[pg78]}
+                        ar += 1		# python integers in ar
+                    # it's the end-carry (result of incr =0) that stops the shift
+                    if ar==0 and ch==0:
+                        break
+
+                self.g15.drum.write_two_word(MQ, 0, reg_md)
+                self.g15.drum.write_two_word(ID, 0, reg_id)
+                if ch == 0:
+                    self.g15.drum.write(AR, 0, int_to_signmag(ar) )
+                return
 
         elif instruction['s'] == 27:
             #

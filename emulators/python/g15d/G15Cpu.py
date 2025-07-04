@@ -58,6 +58,8 @@ class G15Cpu:
         subr_init()
         
         # instantiate the CPU sub-blocks
+        self.vtrace_enabled = False
+        self.cpu_log = G15Cpu_log.g15d_log(self, self.verbosity & VERBOSITY_CPU_LOG_STDOUT, vtracefile)    # Verilog trace output
         self.cpu_fetch = G15Cpu_fetch.g15d_fetch(self)
         self.cpu_decode = G15Cpu_decode.g15d_decode(self, self.verbosity)
         self.cpu_eb = G15Cpu_eb.g15d_eb(self)
@@ -65,8 +67,6 @@ class G15Cpu:
         self.cpu_lb = G15Cpu_lb.g15d_lb(self)
         self.cpu_d31 = G15Cpu_d31.g15d_d31(self, self.verbosity)
         self.cpu_store = G15Cpu_store.g15d_store(self)
-        self.vtrace_enabled = False
-        self.cpu_log = G15Cpu_log.g15d_log(self, self.verbosity & VERBOSITY_CPU_LOG_STDOUT, vtracefile)    # Verilog trace output
 
         self.cpu_ar = G15Cpu_ar.g15d_AR(self)
         self.cpu_pn = G15Cpu_pn.g15d_PN(self, self.verbosity)
@@ -354,7 +354,7 @@ class G15Cpu:
             print("%15s:" % "intermediate_bus", '  %08x' % intermediate_bus, '  %08x' % (intermediate_bus >> 1))
             print("%15s:" % "late_bus", '  %08x' % late_bus, '  %08x' % (late_bus >> 1))
 
-        self.cpu_store.store_late_bus(late_bus, instruction, word_time)
+        self.cpu_store.store_late_bus(late_bus, early_bus, instruction, word_time)
 
         if self.verbosity & VERBOSITY_CPU_TRACE:
             print("%6d" % self.total_instruction_count, "\t\t\t\twrite",

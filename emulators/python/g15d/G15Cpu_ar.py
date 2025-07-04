@@ -25,15 +25,16 @@ class g15d_AR:
         else:
             return value
 
-    def add(self, late_bus):
-        self.add0(late_bus)
+    def add(self, late_bus, early_bus):		# @@@
+        self.add0(late_bus, early_bus)		# @@@
 
-    def add0(self, late_bus):
+    def add0(self, late_bus, early_bus):
         B30 = 1 << 29
         MASK29 = B30 - 1
 
         ar = self.g15.drum.read(AR, 0)
         arsign = ar & 1
+        ebsign = early_bus & 1
         lbsign = late_bus & 1
         lbmag = late_bus & ~1
         sum = (ar & ~1) + lbmag
@@ -63,9 +64,10 @@ class g15d_AR:
                 overflow = 2
             ic = False
             if lbmag > 0:
-                ic = ch==1 and lbsign                                   # gate 3 p.26
-                ic = ic or (ch==3 and s<28 and d<28) and lbsign         # gate 3 p.26
-                ic = ic or (ch==3 and (s>=28 or d>=28) and lbsign==0 )  # gate 4 p.26
+                ic = ch==1 and ebsign                                   # gate 3 p.26
+                ic = ic or ((ch==3 and s<28 and d<28) and ebsign)       # gate 3 p.26
+                ic = ic or (ch==3 and (s>=28 or d>=28) and ebsign==0 )  # gate 4 p.26
+#                self.g15.cpu.cpu_log.msg("AR+  carry:"+str(carry) + "  neg0:"+str(neg0)+"  sum:" +signmag_to_str(sum) + "  ebsign:"+str(ebsign)+"  ic:"+str(ic)+"  lbmag:"+signmag_to_str(lbmag))
                 if (not carry) and  lbsign == 1 and lbmag != 0 and ic : # gate 3 p.27
                     overflow = 3
         if overflow:
@@ -123,11 +125,9 @@ class g15d_AR:
         sum_sign &= 1
         result = sum_mag | sum_sign
 
-        # if a_mag != 0 and b_mag != 0:
         if self.overflow_detect(ar_sign, late_bus_sign, late_bus_mag, sum_mag, carry):
             self.cpu.overflow = 1
 
-        # if result == 1 and ((late_bus >> 28) == 0):
         if result == 1:
             if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_AR:
                 print('removing minus 0')

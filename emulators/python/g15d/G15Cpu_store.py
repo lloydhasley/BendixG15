@@ -14,7 +14,7 @@ class g15d_store:
         self.cpu = cpu
         self.g15 = cpu.g15
 
-    def store_late_bus(self, late_bus, instruction, word_time):
+    def store_late_bus(self, late_bus, early_bus, instruction, word_time):
         """ Stores the late bus to its drum target
 
         :param instruction:    current instruction being executed
@@ -45,7 +45,7 @@ class g15d_store:
             # if new_ar == 1:
             #    new_ar = 0      # elimiante minus 0
 
-            self.cpu.cpu_ar.add(late_bus)
+            self.cpu.cpu_ar.add(late_bus, early_bus)
             # self.g15.drum.write(AR, 0, new_ar)
 
             if AR_add_sub:
@@ -61,12 +61,22 @@ class g15d_store:
             if late_bus:        # all bits including sign bits
                 #print('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
                 #print('latebus: n', instruction['n'])
-                instruction['next_cmd_word_time'] = instruction['n'] + 1
-                if instruction['loc'] == 107:
-                    instruction['next_cmd_word_time'] -= 20
-                    instruction['next_cmd_word_time'] += 108
-                    instruction['next_cmd_word_time'] %= 108
-                    
+                if False:
+                    instruction['next_cmd_word_time'] = instruction['n'] + 1
+                    if instruction['loc'] == 107:
+                        instruction['next_cmd_word_time'] -= 20
+                        instruction['next_cmd_word_time'] += 108
+                        instruction['next_cmd_word_time'] %= 108
+                else:
+#                    print("aab ", instruction)
+                    instruction['next_cmd_word_time'] = instruction['n'] + 1
+#                    print("aaa ", instruction)
+                    if (instruction['n'] != instruction['next_cmd_word_time']) and \
+                            instruction['n'] != (instruction['next_cmd_word_time'] - 1):
+                        print("bbb")
+                        print(instruction['n'])
+                        print(instruction['next_cmd_word_time'])
+
                 #print('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
 
             if instruction['s'] < 28 and instruction['dp'] == 0 and instruction['ch'] == 2:

@@ -451,6 +451,21 @@ class EmulCmds:
                 print("Punched paper tape written to file: ", tokens[1])
                 return
 
+        if tokens[0] == "punch":
+            tracks = []
+            for track in tokens[1:]:
+                if '-' in track:
+                    tokens = track.split('-')
+                    start = int(tokens[0])
+                    end = int(tokens[1])
+                    for i in range(start, end + 1):
+                        tracks.append(i)
+                else:
+                    tracks.append(int(track))
+
+            self.g15.ptp.punch_tracks(tracks)
+            return
+
         self.usage("ptp")
         return
 

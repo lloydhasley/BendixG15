@@ -67,5 +67,6 @@ run 2000
 # run program
 type 0690900//ts     # run the program
 run 5000            # program should auto return to manual
-
+ptp punch 9-12
+ptp write irob912.txt
 quit

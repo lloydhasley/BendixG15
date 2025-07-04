@@ -40,9 +40,12 @@ class g15d_log:
 
     def msg(self, message):
         print(message, file=self.fout)
+        self.fout.flush()
+        self.fout_count += 2
 
     def msg2(self, message):
         print(message, file=self.fout, end="")
+        self.fout.flush()
 
     def logger(self, time_start, time_end, early_bus, intermediate_bus, late_bus):
         # determine if we are idling waiting for IO complete
@@ -88,8 +91,10 @@ class g15d_log:
         else:
             str8 = "  u"
 
-        str9 = instr_dec_hex_convert(instruction['Tdisplay'])
-        str10 = instr_dec_hex_convert(instruction['Ndisplay'])
+#        str9 = instr_dec_hex_convert(instruction['Torig'])
+#        str10 = instr_dec_hex_convert(instruction['Norig'])
+        str9 = instr_dec_hex_convert(instruction['t'])      # diaper listing shows instrs w/ -20
+        str10 = instr_dec_hex_convert(instruction['n'])
         str11 = "%1d" % instruction['ch']
         str12 = instr_dec_hex_convert(instruction['s'])
         str13 = instr_dec_hex_convert(instruction['d'])

@@ -216,7 +216,8 @@ class G15Io:
             print("device ", device)
             print("data_track ", data_track)
 
-        print("entering slowout")
+#        print("entering slowout")
+        print("slow out called at instr: ", self.g15.cpu.total_instruction_count)
 
         # determine output device(s) and validate data selection
         status_flag = False
@@ -263,7 +264,7 @@ class G15Io:
     def slow_out_doit(self):
         # is slow out active?
         
-        print("entering slowoutdotit")
+#        print("entering slowoutdotit")
         
         end_flag = 0
         xlate = [						# @@@
@@ -433,7 +434,7 @@ class G15Io:
             print_list_hex("outstr=", self.outstr)
 
         if end_flag:
-            print("endflag", end_flag)
+#            print("endflag", end_flag)
             if self.device & (DEV_IO_TYPE | DEV_IO_PTP):
                 if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                     print("outstr=", self.outstr)
@@ -456,7 +457,7 @@ class G15Io:
         self.data_track = data_track
         self.device = device
         
-        print("entering slowoutformat, device=", device, ' track=', data_track)
+#        print("entering slowoutformat, device=", device, ' track=', data_track)
         
         self.outstr = []
 
