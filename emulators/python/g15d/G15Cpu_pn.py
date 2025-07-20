@@ -12,6 +12,7 @@ class g15d_PN:
     """ g15d early bus """
     def __init__(self, cpu, verbosity):
         self.verbosity = verbosity
+        self.emul = cpu.emul
         self.cpu = cpu
         self.g15 = cpu.g15
         self.MASK58BIT = (1 << 58) - 1
@@ -28,9 +29,13 @@ class g15d_PN:
         self.g15.drum.write(PN, word_time, late_bus)
 
     def add(self, late_bus, word_time):
-        self.g15.cpu.cpu_log.msg2 ("PNadd["+str(word_time)+"]: LB="+signmag_to_str(late_bus)+" +PN="+signmag_to_str(self.g15.drum.read(PN, word_time)))	 # @@@
+
+        self.emul.log.msg2 ("PNadd["+str(word_time)+"]: LB="+signmag_to_str(late_bus)+" +PN="+signmag_to_str(self.g15.drum.read(PN, word_time)))	 # @@@
+
         if self.cpu.instruction["time_end"] == self.cpu.instruction["time_start"]:
-            self.g15.cpu.cpu_log.msg2 (" -- time_end == time_start --");		# @@@
+
+            self.emul.log.msg2 (" -- time_end == time_start --");		# @@@
+
             late_bus_sign = late_bus & 1
             late_bus_mag = late_bus & self.MASK29MAG
 
@@ -45,7 +50,7 @@ class g15d_PN:
             pn_new = sum_mag | sign_out
             pn_low = pn_new & self.MASK29BIT
             self.g15.drum.write(PN, word_time, pn_low)
-            self.g15.cpu.cpu_log.msg ("Sum.0="+signmag_to_str(pn_low) );		# @@@
+            self.emul.log.msg ("Sum.0="+signmag_to_str(pn_low) );		# @@@
 
             # overflow detect?  on single word adds on PN
             return
@@ -60,8 +65,8 @@ class g15d_PN:
             pn = (self.g15.drum.read(PN, word_time) << 29) | self.old_pn
 
             if self.verbosity & G15Cpu.VERBOSITY_CPU_PN:
-                print('late bus =%015x' % late_bus_extended)
-                print('      pn =%015x' % pn)
+                gl.logprint('late bus =%015x' % late_bus_extended)
+                gl.logprint('      pn =%015x' % pn)
 
             late_bus_sign = late_bus_extended & 1
             late_bus_mag = late_bus_extended & self.MASK58MAG
@@ -72,13 +77,13 @@ class g15d_PN:
             sum_mag = late_bus_mag + pn_mag
 
             if self.verbosity & G15Cpu.VERBOSITY_CPU_PN:
-                print('late_bus_mag=%08x' % late_bus_mag)
-                print('      pn_mag=%08x' % pn_mag)
-                print('     sum_mag=%08x' % sum_mag)
+                gl.logprint('late_bus_mag=%08x' % late_bus_mag)
+                gl.logprint('      pn_mag=%08x' % pn_mag)
+                gl.logprint('     sum_mag=%08x' % sum_mag)
 
             carry_out = sum_mag >> 58
             if carry_out > 0:							# @@@
-                self.g15.cpu.cpu_log.msg2 (" [carry_out=" + str(carry_out) + "] ") # @@@
+                self.emul.log.msg2 (" [carry_out=" + str(carry_out) + "] ") # @@@
             
             sum_mag &= self.MASK58MAG      # remove any carry out
 
@@ -92,20 +97,22 @@ class g15d_PN:
 
             if self.overflow_detect(late_bus_sign, pn_sign, late_bus_mag, sum_mag, carry_out):
                 self.cpu.overflow = 1
-                self.g15.cpu.cpu_log.msg2 (" [overflow: "+str(late_bus_sign)+"."+str(pn_sign)+" "+hex(late_bus_mag)+"."+hex(sum_mag)+" "+str(carry_out)+"] ") # @@@
+
+                self.emul.log.msg2 (" [overflow: "+str(late_bus_sign)+"."+str(pn_sign)+" "+hex(late_bus_mag)+"."+hex(sum_mag)+" "+str(carry_out)+"] ") # @@@
 
             if pn_new == 1:  # mimic Verilog bug,  allows -0 to slip into PN
                 pn_new = 0
 
             if self.verbosity & G15Cpu.VERBOSITY_CPU_D31:
-                print('PN: pn=%015x' % pn, ' late_bus=%015x' % late_bus_extended, ' sum=%015x' % pn_new, " carry=", carry_out)
+                gl.logprint('PN: pn=%015x' % pn, ' late_bus=%015x' % late_bus_extended, ' sum=%015x' % pn_new, " carry=", carry_out)
 
             pn_high = pn_new >> 29
             pn_low = pn_new & MASK29BIT
 
             self.g15.drum.write(PN, word_time, pn_high)
             self.g15.drum.write(PN, word_time + 1, pn_low)   # 2w track, drum needs positive word time index
-            self.g15.cpu.cpu_log.msg ("Sum="+signmag_to_str(pn_high)+"|"+signmag_to_str(pn_low) );		# @@@
+
+            self.emul.log.msg ("Sum="+signmag_to_str(pn_high)+"|"+signmag_to_str(pn_low) );		# @@@
 
     @staticmethod
     def overflow_detect(a_sign, b_sign, late_bus_mag, sum_mag, carry):

@@ -20,7 +20,11 @@ class g15d_fetch:
         """
 
         # print 'fetch: cmd-next_cmd_line=', self.instruction['next_cmd_line']
-
+        # if debugging an instruction, if we know the instruction count
+        # it is advisable to set breakpoint here and then trace the command.
+        BP = -1
+        if self.cpu.total_instruction_count == BP:
+            print("reached BP instruction count=", BP)
         #
         # get the next instruction from the drum, also returns location instruction was taken from
         #

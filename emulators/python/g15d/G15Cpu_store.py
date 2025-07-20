@@ -14,7 +14,7 @@ class g15d_store:
         self.cpu = cpu
         self.g15 = cpu.g15
 
-    def store_late_bus(self, late_bus, instruction, word_time):
+    def store_late_bus(self, late_bus, early_bus, instruction, word_time):
         """ Stores the late bus to its drum target
 
         :param instruction:    current instruction being executed
@@ -30,7 +30,7 @@ class g15d_store:
         blockWrite = viaAR and (word_time%2)==0        # block during low ordered word if via AR
 
         if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_LATE_BUS:
-            print('bw=', blockWrite, ' viaar=', viaAR, ' ts=', Ts)
+            gl.logprint('bw=', blockWrite, ' viaar=', viaAR, ' ts=', Ts)
 
         if destination == AR:
             # eliminate minus-0
@@ -45,7 +45,7 @@ class g15d_store:
             # if new_ar == 1:
             #    new_ar = 0      # elimiante minus 0
 
-            self.cpu.cpu_ar.add(late_bus)
+            self.cpu.cpu_ar.add(late_bus, early_bus)
             # self.g15.drum.write(AR, 0, new_ar)
 
             if AR_add_sub:
@@ -59,7 +59,15 @@ class g15d_store:
 
             # if late_bus & (MASK29BIT - 1):	# ignore sign bit
             if late_bus:        # all bits including sign bits
+                #gl.logprint('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
+                #gl.logprint('latebus: n', instruction['n'])
                 instruction['next_cmd_word_time'] = instruction['n'] + 1
+                if instruction['loc'] == 107:
+                    instruction['next_cmd_word_time'] -= 20
+                    instruction['next_cmd_word_time'] += 108
+                    instruction['next_cmd_word_time'] %= 108
+                    
+                #gl.logprint('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
 
             if instruction['s'] < 28 and instruction['dp'] == 0 and instruction['ch'] == 2:
                 data = self.g15.drum.read(instruction['s'], word_time)
@@ -98,6 +106,6 @@ class g15d_store:
         elif destination != SPECIAL:
             # normal write
             if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_LATE_BUS:
-                print('late_bus write:, dest=', destination, ' wt=', word_time, ' val=%x' % late_bus)
+                gl.logprint('late_bus write:, dest=', destination, ' wt=', word_time, ' val=%x' % late_bus)
 
             self.g15.drum.write(destination, word_time, late_bus)

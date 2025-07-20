@@ -36,9 +36,9 @@ class g15d_ib:
             (instruction['s'] == PN) and (not instruction['ch'] & 2) and (instruction['d'] == PN)
 
         if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_INTERMEDIATE_BUS:
-            print('cmd_type=', instruction['cmd_type'])
-            print('ip_block_d=', ip_block_d)
-            print('ip_block_s=', ip_block_s)
+            gl.logprint('cmd_type=', instruction['cmd_type'])
+            gl.logprint('ip_block_d=', ip_block_d)
+            gl.logprint('ip_block_s=', ip_block_s)
 
         if Ts:
             if sign_bit and (instruction['cmd_type'] & (CMD_TYPE_AD | CMD_TYPE_AVA)):
@@ -104,7 +104,7 @@ class g15d_ib:
                 intermediate_bus |= 1
 
             if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_INTERMEDIATE_BUS:
-                print("\tintermediate_bus = ", signmag_to_str(intermediate_bus))
+                gl.logprint("\tintermediate_bus = ", signmag_to_str(intermediate_bus))
 
             self.old_early_bus = early_bus
 

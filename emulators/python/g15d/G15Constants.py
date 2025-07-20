@@ -61,6 +61,41 @@ SPECIAL = 31
 
 two_word_tracks = [ID, MQ, PN]
 
+track_lengths = {
+    M0: 108,
+    M1: 108,
+    M2: 108,
+    M3: 108,
+    M4: 108,
+    M5: 108,
+    M6: 108,
+    M7: 108,
+    M8: 108,
+    M9: 108,
+    M10: 108,
+    M11: 108,
+    M12: 108,
+    M13: 108,
+    M14: 108,
+    M15: 108,
+    M16: 108,
+    M17: 108,
+    M18: 108,
+    M19: 108,
+    M20: 4,
+    M21: 4,
+    M22: 4,
+    M23: 4,
+    MQ: 2,
+    ID: 2,
+    PN: 2,
+    MZ: 4,
+    AR: 1,
+    CM: 1,
+    CN: 108
+}
+
+
 CMD_TYPE_TR = 1
 CMD_TYPE_AD = 2
 CMD_TYPE_TVA = 4
@@ -94,9 +129,9 @@ G15_WAIT	= 0x07
 G15_DIGIT	= 0x10
 
 # io subsystem device io defs
-DEV_IO_TYPE = 8
-DEV_IO_PTR = 15
-DEV_IO_PTP = 10
+DEV_IO_TYPE = 1
+DEV_IO_PTR = 2
+DEV_IO_PTP = 4
 
 #IO_STATUS_READY	            = 0x00
 IO_STATUS_READY	            	= 0x10
@@ -139,12 +174,9 @@ MASK58BIT = (1 << 58) - 1
 #}
 hex2ascii = "0123456789uvwxyz"
 
-SIM_REQUEST_UNLOCK      = 0     # unloack and allow execution thread to run
-SIM_REQUEST_LOCK        = 1     # lock and prevent execution of new instructions
-#SIM_REQUEST_TERMINATE   = 2     # after current instruction, instruction thread is to terminate
 
-SEMAPHORE_WAIT_TIME = 0.01		# time to wait between thread polls
-
+STATE_IDLE = False
+STATE_RUNNING = True
 
 TRACE_ENABLE = 1
 TRACE_ACC = 2
@@ -170,6 +202,8 @@ sw_mappings = {
 	}
 }
 
+
+        
 cmd_line_map_names = {
 	0: 'L0',
 	1: 'L1',

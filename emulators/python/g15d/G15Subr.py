@@ -16,6 +16,8 @@ str2word(str)
 """
 
 from G15Constants import *
+import gl
+
 
 STR_WIDTH = 8
 STR_PAD = '000000000000000000000'
@@ -129,7 +131,7 @@ def comp2s(number, size):
     value = (1 << size) - number
     value &= (1 << size) - 1
 
-    print('int: number=0x%x' % number, 'value=0x%x' % value)
+    gl.logprint('int: number=0x%x' % number, 'value=0x%x' % value)
 
     return value
 
@@ -145,11 +147,15 @@ def signmag_to_str(signmag, str_width=8):
     else:
         sign_str = ' '
 
-    # print("signmap=%x"%signmag, " mag=%x" % mag)
+    # logprint("signmap=%x"%signmag, " mag=%x" % mag)
     ret_str = sign_str + mag_to_str(mag, str_width)
 
     return ret_str
 
+def word_time_rollover(num):
+    while num >= 108:
+        num = num - 108
+    return num
 
 def mag_to_str(num, str_width=8):
     ''' convert 28bit magnitude number to a string '''
@@ -236,7 +242,7 @@ def int_plus_int(a, b):
         total = ((~total) + 1) & ((1<<29) - 1)
         total = -total
 
-    print('a=',a, ' b=',b, ' total=',total)
+    gl.logprint('a=',a, ' b=',b, ' total=',total)
 
     return total
 
@@ -273,7 +279,7 @@ def int_to_signmag(value2s):
 
 def wordtime_to_str(value):
     if value > 116:
-        print('INTERNAL ERROR: bad word time specified: ',value)
+        gl.logprint('INTERNAL ERROR: bad word time specified: ',value)
         value = 0
 
     lsd = value % 10
@@ -310,9 +316,9 @@ def bits_extract(word, width, offset):
 #
 def instr_dec_hex_convert(number):
     #
-    if number > 116:  # beyond range of S/D
-        return "ER"
-    else:
+#    if number > 116:  # beyond range of S/D
+#        return "ER"
+#    else:
         FirstDigit = int(number / 10)
         SecondDigit = number % 10
         #
@@ -349,5 +355,5 @@ def print_list_hex(label, values):
         num_str = " %02x" % value
         outstr += num_str
     outstr += ']'
-    print(outstr)
+    gl.logprint(outstr)
 

@@ -9,7 +9,8 @@
 import sys
 
 from G15Subr import *
-from printg15 import printg15
+from printg15 import printfg15
+import gl
 
 MAXIODEVICES = 16
 
@@ -40,12 +41,13 @@ class G15Io:
         self.format_track = 0
         self.words_to_print = 0
         self.os = 0     # sign flag
+        self.punch_flag = 0
 
         self.format_i = 0       # pep8 happiness
 
     def attach(self, identifier, device, name):
         if identifier >= MAXIODEVICES or identifier < 0:
-            print('Error: Illegal IO device id:', identifier)
+            gl.logprint('Error: Illegal IO device id:', identifier)
             sys.exit(1)
 
         self.devices[identifier] = device
@@ -55,7 +57,7 @@ class G15Io:
         if status == IO_STATUS_READY:
             if self.verbosity & VERBOSITY_IO_SLOW_OUT:
                 if self.status == IO_STATUS_OUT_AR or self.status == IO_STATUS_OUT_TYPE_L19:
-                    print('output/3=', self.outstr)
+                    gl.logprint('output/3=', self.outstr)
 
             self.status = IO_STATUS_READY
 
@@ -74,8 +76,13 @@ class G15Io:
                 self.sign = 0
             self.status = IO_STATUS_OUT_TYPE_L19
 
+        elif status == IO_STATUS_OUT_PUNCH_L19:
+            if status == IO_STATUS_READY:
+                self.sign = 0
+            self.status = IO_STATUS_OUT_PUNCH_L19
+            
         else:
-            print('Error: unsupported IO device, ignored:  status=0x%02x' % self.status)
+            gl.logprint('Error: unsupported IO device, ignored:  status=0x%02x' % self.status)
             self.status = IO_STATUS_READY
 
         return self.status == IO_STATUS_READY
@@ -93,7 +100,7 @@ class G15Io:
         if self.status == IO_STATUS_IN_TYPEWRITER:
             in_data = self.g15.typewriter.read()
         else:
-            print('Error unsupported input device code')
+            gl.logprint('Error unsupported input device code')
             return
 
         if not in_data:
@@ -101,34 +108,34 @@ class G15Io:
 
         for data in in_data:
             if self.verbosity & VERBOSITY_IO_DETAIL:
-                print("slowin: data=%x" % data, " instr=", self.g15.cpu.total_instruction_count,
+                gl.logprint("slowin: data=%x" % data, " instr=", self.g15.cpu.total_instruction_count,
                       '\t[', code_to_ascii[data]['ascii'], ']')
 
             if self.verbosity & VERBOSITY_IO_DETAIL:
-                print('m23 data = ', mag_to_str(data))
+                gl.logprint('m23 data = ', mag_to_str(data))
                 self.g15.drum.display(M23, 0, 4)
 
             if data & G15_DIGIT:
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print('m23 data at digit entry')
+                    gl.logprint('m23 data at digit entry')
                     self.g15.drum.display(M23, 0, 4)
 
                 # data nibble
                 self.g15.drum.precess(M23, 4)
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print('m23 data after precess = ', mag_to_str(data))
+                    gl.logprint('m23 data after precess = ', mag_to_str(data))
                     self.g15.drum.display(M23, 0, 4)
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    printg15(" data=%x" % data)
+                    gl.logprint(" data=%x" % data)
 
                 m23_data = self.g15.drum.read(M23, 0)
                 m23_data |= data & 0xf
                 self.g15.drum.write(M23, 0, m23_data)
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print('m23 data after precess & write = ', mag_to_str(data))
+                    gl.logprint('m23 data after precess & write = ', mag_to_str(data))
                     self.g15.drum.display(M23, 0, 4)
 
                 continue
@@ -145,7 +152,7 @@ class G15Io:
                 self.sign = 0
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print('m23 data after precess = ', mag_to_str(data))
+                    gl.logprint('m23 data after precess = ', mag_to_str(data))
                     self.g15.drum.display(M23, 0, 4)
 
                 continue
@@ -158,10 +165,10 @@ class G15Io:
                 self.reload()
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print("TYPEIN RELOAD")
-                    print("M23:")
+                    gl.logprint("TYPEIN RELOAD")
+                    gl.logprint("M23:")
                     self.g15.drum.display(M23, 0, 4)
-                    print("M19:")
+                    gl.logprint("M19:")
                     self.g15.drum.display(M19, 0, 8)
 
                 continue
@@ -172,10 +179,10 @@ class G15Io:
                 self.set_status(IO_STATUS_READY)
 
                 if self.verbosity & VERBOSITY_IO_DETAIL:
-                    print("TYPEIN STOP")
-                    print("M23:")
+                    gl.logprint("TYPEIN STOP")
+                    gl.logprint("M23:")
                     self.g15.drum.display(M23, 0, 4)
-                    print("M19:")
+                    gl.logprint("M19:")
                     self.g15.drum.display(M19, 0, 8)
 
                 continue
@@ -188,7 +195,7 @@ class G15Io:
                 # ignore
                 continue
 
-            print('unknown slowin character: 0x%0x' % data)
+            gl.logprint('unknown slowin character: 0x%0x' % data)
 
     def reload(self):
         # precess M19 by four words
@@ -207,23 +214,36 @@ class G15Io:
         # data_track = line 19 or line 23
         #
         if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-            print("device ", device)
-            print("data_track ", data_track)
+            gl.logprint("entering slowout")
+            gl.logprint("device ", device)
+            gl.logprint("data_track ", data_track)
 
+        # determine output device(s) and validate data selection
         status_flag = False
-        if device == DEV_IO_TYPE:
+        self.punch_flag = False
+        
+        if device & DEV_IO_TYPE:
             if data_track == AR:
                 self.set_status(IO_STATUS_OUT_AR)
                 status_flag = True
             elif data_track == M19:
                 self.set_status(IO_STATUS_OUT_TYPE_L19)
                 status_flag = True
+                
+        if device & DEV_IO_PTP and data_track == M19:
+            self.set_status(IO_STATUS_OUT_PUNCH_L19)
+            status_flag = True
+            self.punch_flag = True
+
+        # check if typewriter punch switch is on
+        if self.g15.cpu.sw_tape == 'punch':
+            self.punch_flag = True
 
         if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-            print("status_flag ", status_flag)
+            gl.logprint("status_flag ", status_flag)
 
         if not status_flag:
-            print('Error: unknown IO device, device id: ', device)
+            gl.logprint('Error: unknown IO device, device id: ', device)
             return
 
         self.slow_out_format(device, data_track)
@@ -242,9 +262,11 @@ class G15Io:
     
     def slow_out_doit(self):
         # is slow out active?
+
         end_flag = 0
         xlate = [						# @@@
-                      '_', '-', 'N', 'T', 'E', '/', '.', 'W',	# @@@
+#                      '_', '-', 'N', 'T', 'E', '/', '.', 'W',	# @@@
+                      '_', '-', 'C', 'T', 'S', '/', '.', 'W',	# @@@
                       '@', '@', '@', '@', '@', '@', '@', '@',	# @@@
                       '0', '1', '2', '3', '4', '5', '6', '7',	# @@@
                       '8', '9', 'u', 'v', 'w', 'x', 'y', 'z']	# @@@
@@ -254,12 +276,12 @@ class G15Io:
 
         if self.status == IO_STATUS_READY:
             if self.verbosity & VERBOSITY_IO_DETAIL:
-                print("slow_out_doit. check at icnt", self.g15.cpu.total_instruction_count)
+                gl.logprint("slow_out_doit. check at icnt", self.g15.cpu.total_instruction_count)
             self.slow_out_count = 0
             return
 
         if self.verbosity & VERBOSITY_IO_DETAIL:
-            print("slowoutcount=", self.slow_out_count, " drum=", self.g15.drum.revolution_get())
+            gl.logprint("slowoutcount=", self.slow_out_count, " drum=", self.g15.drum.revolution_get())
 
         # accumulate sign bit
         #   any sign bit sets sign, outputting a character resets it
@@ -281,12 +303,12 @@ class G15Io:
             self.outstr = []
 
             if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                print('format= 0x%x039x' % self.g15_format)
+                gl.logprint('format= 0x%x039x' % self.g15_format)
     
             if self.verbosity & VERBOSITY_IO_FORMAT:
-                print('format3:= o%010o' % self.g15.drum.read(self.format_track, 3))
-                print('format2:= o%010o' % self.g15.drum.read(self.format_track, 2))
-                print('format1:= o%010o' % self.g15.drum.read(self.format_track, 1))
+                gl.logprint('format3:= o%010o' % self.g15.drum.read(self.format_track, 3))
+                gl.logprint('format2:= o%010o' % self.g15.drum.read(self.format_track, 2))
+                gl.logprint('format1:= o%010o' % self.g15.drum.read(self.format_track, 1))
 
             self.zero_suppress = self.enable_zero_suppress
 
@@ -299,10 +321,10 @@ class G15Io:
             format_code &= 7
 
             if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                print('format_i=', self.format_i, ' format_code=', format_code)
+                gl.logprint('format_i=', self.format_i, ' format_code=', format_code)
                 if self.data_track == 19:
                     m19 = self.g15.drum.read(self.data_track, 107)
-                    print(' m19_107: s19=', m19 & 1, ' s=', self.os, ' mag=%08x' % (m19 >> 1))
+                    gl.logprint(' m19_107: s19=', m19 & 1, ' s=', self.os, ' mag=%08x' % (m19 >> 1))
 
             # format 0-37
             # advance format_i
@@ -315,12 +337,14 @@ class G15Io:
                 self.g15.drum.precess(self.data_track, 4)
 
                 nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
-                if self.zero_suppress and nibble == 0:
+                if self.zero_suppress and nibble == 0 and not self.punch_flag:
                     self.outstr.append(G15_SPACE)
-                    print (" ", end='');				# @@@ actual output
+                    print(" ", end='');				# @@@ actual output
                 else:
                     self.outstr.append(G15_DIGIT | nibble)
                     print (xlate[G15_DIGIT|nibble], end='')		# @@@ actual output
+                    if self.punch_flag:
+                        self.g15.ptp.punch(self.outstr)
                     #
                 if nibble != 0:
                     self.zero_suppress = 0
@@ -339,7 +363,6 @@ class G15Io:
                 self.outstr.append(G15_CR)
                 self.zero_suppress = self.enable_zero_suppress
                 self.g15.drum.precess(self.data_track, 1)
-#                print ("[\\n]");	# newline			# @@@@
                 print ("");		# newline			# @@@@
 
             elif format_code == FORMAT_TAB:
@@ -363,8 +386,8 @@ class G15Io:
                     if zero_flag == 1:
                         self.outstr.append(G15_STOP)
                         if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                            print('format complete')
-                            print('output/1=', self.outstr)
+                            gl.logprint('format complete')
+                            gl.logprint('output/1=', self.outstr)
                         end_flag = 1       # signal break of outer loop
                     else:
                         self.outstr.append(G15_RELOAD)
@@ -373,8 +396,8 @@ class G15Io:
                     # AR being output
                     self.outstr.append(G15_STOP)
                     if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                        print('format complete')
-                        print('output/2=', self.outstr)
+                        gl.logprint('format complete')
+                        gl.logprint('output/2=', self.outstr)
                     end_flag = 1
 
             elif format_code == FORMAT_RELOAD:
@@ -394,8 +417,7 @@ class G15Io:
                 print (".", end='')						# @@@
 
             else:
-                print('[Error:Unknown output format code: ', format, ']')	# @@@ 
-#                print('Error:Unknown output format code: ', format)	
+                gl.logprint('[Error:Unknown output format code: ', format, ']')	# @@@ 
                 self.g15.cpu.unknown_instruction_count += 1
 
         if self.slow_out_count == 3:
@@ -407,24 +429,35 @@ class G15Io:
             print_list_hex("outstr=", self.outstr)
 
         if end_flag:
-            if self.device == DEV_IO_TYPE:
+            if self.device & (DEV_IO_TYPE | DEV_IO_PTP):
                 if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-                    print("outstr=", self.outstr)
+                    gl.logprint("outstr=", self.outstr)
+                    
                 self.os = 0
-                self.g15.typewriter.write(self.outstr)
+
+                if self.device & DEV_IO_TYPE:
+                    if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                        gl.logprint("calling typewriter")
+                    self.g15.typewriter.write(self.outstr)
+                if self.punch_flag:
+                    if self.verbosity & VERBOSITY_IO_SLOW_OUT:
+                        gl.logprint("calling punch")
+                    self.g15.ptp.punch(self.outstr)
                 self.set_status(IO_STATUS_READY)
+                
             self.slow_out_count = 0     # all done
 
     def slow_out_format(self, device, data_track):
         self.data_track = data_track
         self.device = device
         
+        # print("entering slowoutformat, device=", device, ' track=', data_track)
+        
         self.outstr = []
 
-        if device == DEV_IO_TYPE:
+        self.enable_zero_suppress = 0
+        if (device & DEV_IO_TYPE) and not (device & DEV_IO_PTP):
             self.enable_zero_suppress = 1
-        else:
-            self.enable_zero_suppress = 0
 
         if data_track == AR:  # AR
             self.words_to_print = 1
@@ -433,22 +466,22 @@ class G15Io:
             self.words_to_print = 108
             self.format_track = 2
         else:
-            print('Error: Illegal data track specified: %d', data_track)
+            gl.logprint('Error: Illegal data track specified: %d', data_track)
             self.g15.cpu.unknown_instruction_count += 1
             self.format_track = 2
 
         if self.verbosity & VERBOSITY_IO_SLOW_OUT:
-            print('slowout: data_track=', data_track, ' format_track=', self.format_track) 
+            gl.logprint('slowout: data_track=', data_track, ' format_track=', self.format_track) 
             
         self.slow_out_count = 1
             
-        return self.outstr
+        return
     #
     # convert G15 io tape codes to typewriter outputs
     #   includes ASCII conversionsts
     def io_2_ascii(self, data_out):
         if self.verbosity & VERBOSITY_IO_DETAIL:
-            print('L2Str: t data_out=', data_out)
+            gl.logprint('L2Str: t data_out=', data_out)
 
         str_out = ''
         for data in data_out:
@@ -471,4 +504,4 @@ class G15Io:
         return str_out
 
     def Status(self):
-        print('IO subsystem status:', io_status_str[self.status])
+        gl.logprint('IO subsystem status:', io_status_str[self.status])

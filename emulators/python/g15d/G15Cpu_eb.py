@@ -29,7 +29,6 @@ class g15d_eb:
             early_bus = 0
         elif source_track == 27 or source_track == 30 or source_track == 31:
             m20 = self.g15.drum.read(M20, word_time)
-            # m20n = invert29(self.g15.drum.read(20, word_time))
             m20n = (~m20) & MASK29BIT
             m21 = self.g15.drum.read(M21, word_time)
             ar = self.g15.drum.read(AR, word_time)
@@ -43,6 +42,6 @@ class g15d_eb:
             early_bus = self.g15.drum.read(source_track, word_time)
 
         if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_EARLY_BUS:
-            print("\t       early_bus = ", instr_2_hex_string(early_bus))
+            gl.logprint("\t       early_bus = ", instr_2_hex_string(early_bus))
 
         return early_bus

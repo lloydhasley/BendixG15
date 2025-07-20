@@ -16,9 +16,11 @@
 #
 #############################################################
 #
-from G15Subr import *
 import copy
 import os
+
+from G15Subr import *
+import gl
 
 VERBOSITY_PT_MOUNT = 1
 VERBOSITY_PT_CHECKSUM = 2
@@ -30,6 +32,7 @@ class G15Ptr:
     '''
     def __init__(self, g15, tapedir=None, Verbosity=0x2):
         self.g15 = g15
+        self.emul = g15.emul
         self.tapedir = tapedir
         self.verbosity = Verbosity
 
@@ -41,7 +44,7 @@ class G15Ptr:
         self.suffixes = ['', '.pt', '.pti', '.ptr']
         self.tape_paths = self.searchForTapesDirectory(tapedir)
 
-        print("tape-path=", self.tape_paths)
+        gl.logprint("tape-path=", self.tape_paths)
 
         # create empty tape image
         self.tape_parsed = []			# will hold parsed blocks
@@ -50,7 +53,7 @@ class G15Ptr:
         self.numbertrack = self.numbertrack_create()
 
         if self.verbosity & 1:
-            print('\tPaper tape Reader Attached')
+            gl.logprint('\tPaper tape Reader Attached')
 
     def searchForTapesDirectory(self, tapedir):
         tape_paths = []
@@ -71,7 +74,6 @@ class G15Ptr:
                 tape_paths.append(tdir + '/images') # found it
                 break
             dir = os.path.dirname(dir)
-            print("dir=", dir)
             if dir == '/':      # all done
                 # no tapes directory dir tree
                 break
@@ -80,11 +82,11 @@ class G15Ptr:
 
     def insure_NT(self):
         if len(self.tape_parsed) == 0:
-            print("Paper tape is not mounted")
+            gl.logprint("Paper tape is not mounted")
             return
 
         if not self.check_if_numbertrack(self.tape_parsed[0]):
-            print("Note: PT does not have NT, automatically prepending NT")
+            gl.logprint("Note: PT does not have NT, automatically prepending NT")
 
             # tape does not have number track, so add it
             block = copy.copy(self.numbertrack)
@@ -108,9 +110,9 @@ class G15Ptr:
 
         '''
         if self.verbosity & VERBOSITY_PT_MOUNT:
-            print("Reading tape Image: ", file_name)
+            gl.logprint("Reading tape Image: ", file_name)
 
-        print("Mounting tape: ", file_name, " onto paper tape reader")
+        gl.logprint("Mounting tape: ", file_name, " onto paper tape reader")
 
         # make list of possible file names
         # not most efficient approach, but less confusing
@@ -129,28 +131,22 @@ class G15Ptr:
         # filenames is a list of possible filenames
         # note: if user fname begins with / it is assumed to be complete path
 
-#        print("file_names=", file_names)
-#        print("will try to mount the following:")
-#        for file_name in file_names:
-#            print("\t", file_name)
-
         flag = 0
         for file_name in file_names:
             if self.verbosity & 1:
-                print('Trying to open file: ', self.file_name)
+                gl.logprint('Trying to open file: ', self.file_name)
             try:
                 FileP = open(file_name, 'rb')
                 flag = 1
                 break
             except IOError:
-                # print('Error:  Cannot open tape file: ', self.tape_name, ' for reading')
                 continue
 
         if flag == 0:
-            print('Error: Cannot open file: ', file_name, ' for reading')
+            gl.logprint('Error: Cannot open file: ', file_name, ' for reading')
             return
 
-        print('Tape: ', file_name, ' has been mounted')
+        gl.logprint('Tape: ', file_name, ' has been mounted')
 
         # read the file
         # determine if tape is bit transposed (BIG ENDIAN at bit level)
@@ -172,7 +168,7 @@ class G15Ptr:
         self.tape_parsed = self.parse_tape(image)   # convert to ptw (tape blocks and words
 
         # tape is now a 2d lists by block,word of entire tape
-        print('\ttape Contents:')
+        gl.logprint('\ttape Contents:')
         block_content = 0
         for block in self.tape_parsed:
             sum2 = self.checksum2(block)
@@ -194,10 +190,10 @@ class G15Ptr:
             else:
                 numbertrack_str = '  '
 
-            print('\t\tblock #%2d' % block_content, ' has %3d' % len(block), ' words, checksum= ', signmag_to_str(sum2), numbertrack_str)
+            gl.logprint('\t\tblock #%2d' % block_content, ' has %3d' % len(block), ' words, checksum= ', signmag_to_str(sum2), numbertrack_str)
             block_content += 1
 
-        print('Number of blocks: ', len(self.tape_parsed))
+        gl.logprint('Number of blocks: ', len(self.tape_parsed))
 
         # for future read block commands
         # determine active index intro tape contents lists
@@ -219,10 +215,6 @@ class G15Ptr:
         chksum2 = (checksum << 1) | (checksum >> 28)
         chksum2 &= 0x1fffffff
 
-        #outstr = signmag_to_str(chksum2)
-        #print("chksum2=%x"% chksum2)
-        # print("sum2c=", outstr)
-
         return chksum2  # sign/mag
 
     def parse_tape(self, tape_contents):
@@ -237,7 +229,7 @@ class G15Ptr:
         not a user routine, called by mount_tape
         '''
         if self.verbosity & VERBOSITY_PT_PARSE:
-            print('Entering Parse Tape')
+            gl.logprint('Entering Parse Tape')
 
         # gather up a short block
         block_bytes = []
@@ -258,11 +250,11 @@ class G15Ptr:
                 count_bytes += 1
             elif byte == 0x1:
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print("minus")
+                    gl.logprint("minus")
                 minus_sign = 1
             elif byte == 0x2 or byte == 0x3:
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print("cr/tab")
+                    gl.logprint("cr/tab")
                 word = 0
                 for Byte in block_bytes:
                     word = word << 4
@@ -270,7 +262,7 @@ class G15Ptr:
                 word <<= 1
                 word |= minus_sign
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print('Word=%09x' % word, 'sign=', minus_sign, 'block_bytes=', block_bytes)
+                    gl.logprint('Word=%09x' % word, 'sign=', minus_sign, 'block_bytes=', block_bytes)
 
                 # cr and tab clear the minus sign history
                 minus_sign = 0
@@ -282,13 +274,13 @@ class G15Ptr:
             elif byte == 0x4 or byte == 0x5:
                 if self.verbosity & VERBOSITY_PT_PARSE:
                     if byte == 0x4:
-                        print("Stop detected")
+                        gl.logprint("Stop detected")
                     else:
-                        print("Reload detected")
-                    print("block_bytes: ", block_bytes)
-                    print("quad_word: ", quad_word)
-                    print("# of bytes: ", count_bytes)
-                    print("# Xfers=", count_xfers)
+                        gl.logprint("Reload detected")
+                    gl.logprint("block_bytes: ", block_bytes)
+                    gl.logprint("quad_word: ", quad_word)
+                    gl.logprint("# of bytes: ", count_bytes)
+                    gl.logprint("# Xfers=", count_xfers)
 
                 if block_bytes != []:
                     quad_word = self.extract_four_words(block_bytes)
@@ -300,7 +292,7 @@ class G15Ptr:
                 quad_word = []
 
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print('block Contents: ', block_contents)
+                    gl.logprint('block Contents: ', block_contents)
 
                 # stop detected, move block onto tape image
                 if byte == 0x04:
@@ -321,19 +313,19 @@ class G15Ptr:
                     count_xfers += 1
             elif byte == 0x6:
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print("period")
+                    gl.logprint("period")
                 self.deal_with_me_count += 1
             elif byte == 0x7:
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print("wait")
+                    gl.logprint("wait")
                 self.deal_with_me_count += 1
             else:
-                print("Unknown input code: %x" % byte)
+                gl.logprint("Unknown input code: %x" % byte)
                 self.deal_with_me_count += 1
 
-        print("\tblocks Detected: ", count_stops)
-        print("\tTotal tape Errors Detected: ", self.deal_with_me_count)
-        print("\ttape File has been imported, ready to be use")
+        gl.logprint("\tblocks Detected: ", count_stops)
+        gl.logprint("\tTotal tape Errors Detected: ", self.deal_with_me_count)
+        gl.logprint("\ttape File has been imported, ready to be use")
 
         return tape
 
@@ -349,7 +341,7 @@ class G15Ptr:
         '''
         byte_count = len(bytes)
         if byte_count != 29:
-            print("Error: Current conversion program requires 29 byte (ie full) blocks")
+            gl.logprint("Error: Current conversion program requires 29 byte (ie full) blocks")
 
         # have exact number of 29 bit words
         data = 0
@@ -360,7 +352,7 @@ class G15Ptr:
             # bring in the byte
             # previous data is MSB over newer data
             if self.verbosity & VERBOSITY_PT_PARSE:
-                print('new byte=%02x' % byte, ' olddata=%08x' % data, ' bit_count=', bit_count)
+                gl.logprint('new byte=%02x' % byte, ' olddata=%08x' % data, ' bit_count=', bit_count)
 
             data <<= 4
             data += byte
@@ -379,11 +371,11 @@ class G15Ptr:
                 bit_count -= 29
 
                 if self.verbosity & VERBOSITY_PT_PARSE:
-                    print('word extracted=%08x' % word)
+                    gl.logprint('word extracted=%08x' % word)
 
         if words != 4 and bit_count != 0:
-            print("Error: bytes did not fit exactly into a quad word")
-            print("bytes were: ", bytes)
+            gl.logprint("Error: bytes did not fit exactly into a quad word")
+            gl.logprint("bytes were: ", bytes)
         return words
 
     def pti_remove_comments(self, image):
@@ -408,7 +400,6 @@ class G15Ptr:
         # we count in case of noise in the file (raw images)
         count_ascii = 0
         for symbol in image:
-            #symbol_ord = ord(symbol)
             symbol_ord = symbol
             if symbol_ord >= 0x30:       # numeral 0
                 count_ascii += 1
@@ -426,12 +417,12 @@ class G15Ptr:
                 continue
             code = ascii_2_code(IO_DEVICE_PAPER_TAPE, chr(char))
             if code < 0:
-                print("ERROR: unknown code: ", chr(char), " .... character is ignored")
+                gl.logprint("ERROR: unknown code: ", chr(char), " .... character is ignored")
                 error_count += 1
             else:
                 new_image.append(code)
         if error_count:
-            print(error_count, " Errors were detected")
+            gl.logprint(error_count, " Errors were detected")
 
         return new_image
 
@@ -448,7 +439,7 @@ class G15Ptr:
                 bit5_count += 1
 
         if self.verbosity & VERBOSITY_PT_MOUNT:
-            print('bit1_count=', bit1_count, ' bit5_count=', bit5_count)
+            gl.logprint('bit1_count=', bit1_count, ' bit5_count=', bit5_count)
 
         # check if file is bit-transposed
         if bit5_count >= bit1_count:
@@ -456,7 +447,7 @@ class G15Ptr:
 
         # oops, need to reverse transpose
         if self.verbosity & VERBOSITY_PT_MOUNT:
-            print('\tNote: tape has bits reversed, fixing.....')
+            gl.logprint('\tNote: tape has bits reversed, fixing.....')
 
         new_image = []
         for char in image:
@@ -484,7 +475,7 @@ class G15Ptr:
             byte_in >>= 1
 
         if self.verbosity & VERBOSITY_PT_MOUNT:
-            print("transpose: in=%02x" % byte_in_copy, " out=%02x" % byte_out)
+            gl.logprint("transpose: in=%02x" % byte_in_copy, " out=%02x" % byte_out)
 
         return byte_out
 
@@ -534,15 +525,13 @@ class G15Ptr:
         word_count = len(block)
         #
         if word_count != 108:
-            # print "Length is incorrect, should be 108, is: ", word_count
             return 0
         #
         for i in range(108):
-            #print("i=",i, ' block=%08x'%block[i], " nt=%08x"%self.numbertrack[i])
             if block[i] != self.numbertrack[i]:
                 return 0
         #
-        # print "Number Track has been identified"
+        # gl.logprint "Number Track has been identified"
         return 1
         #
     #
@@ -557,14 +546,14 @@ class G15Ptr:
 
         # are we pass end of tape
         if self.read_index >= len(self.tape_parsed):
-            print("ERROR: Attempt at reading Paper tape beyond end of data")
+            gl.logprint("ERROR: Attempt at reading Paper tape beyond end of data")
             return
 
         # read the next block of tape
         block = self.tape_parsed[self.read_index]
 
         # write the block to M19
-        print('PTR: Reading next tape block #', self.read_index, ' into M19')
+        gl.logprint('PTR: Reading next tape block #', self.read_index, ' into M19')
         self.g15.drum.write_block(self.read_index, M19, block)
 
         # write 1st four words to M23
@@ -593,12 +582,12 @@ class G15Ptr:
                 self.read_index = 0
                 
     def Status(self):
-        print('\nPaper tape Status:')
+        gl.logprint('\nPaper tape Status:')
 
         name = self.tape_name
         if name == '':
             name = 'No tape Mounted'
 
-        print('\t                        Mounted tape: ', name)
-        print('\tTape Position: Next Block to be Read: ', self.read_index)
+        gl.logprint('\t                        Mounted tape: ', name)
+        gl.logprint('\tTape Position: Next Block to be Read: ', self.read_index)
         

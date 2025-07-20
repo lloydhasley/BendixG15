@@ -11,40 +11,9 @@
 """
 
 from G15Subr import *
+import gl
 
-track_lengths = {
-    M0: 108,
-    M1: 108,
-    M2: 108,
-    M3: 108,
-    M4: 108,
-    M5: 108,
-    M6: 108,
-    M7: 108,
-    M8: 108,
-    M9: 108,
-    M10: 108,
-    M11: 108,
-    M12: 108,
-    M13: 108,
-    M14: 108,
-    M15: 108,
-    M16: 108,
-    M17: 108,
-    M18: 108,
-    M19: 108,
-    M20: 4,
-    M21: 4,
-    M22: 4,
-    M23: 4,
-    MQ: 2,
-    ID: 2,
-    PN: 2,
-    MZ: 4,
-    AR: 1,
-    CM: 1,
-    CN: 108
-}
+
 
 VERBOSITY_DRUMP_CREATE = 1
 VERBOSITY_DRUM_OP = 2
@@ -75,29 +44,27 @@ class G15Drum:
 
         if self.verbosity & VERBOSITY_DRUMP_CREATE:
             for i in track_lengths:
-                print('Track %02d' % i, ' len=%03d' % len(self.drum[i]))
+                gl.logprint('Track %02d' % i, ' len=%03d' % len(self.drum[i]))
 
         # make pep8 happy
         self.rev_count = 0
         self.stop_time_previous = 0
 
         self.revolution_init()
-
+        
     # determine line length
     def track_length(self, track):
         """ Determine number of word in specified track """
 
-        if track in track_lengths:
+        try:
             length = track_lengths[track]
-        else:
-            print('Error: Unknown Track: ', track)
+        except:
+            gl.logprint('Error: Unknown Track: ', track)
             length = 1			# default
-        #
-        if self.verbosity & VERBOSITY_DRUMP_CREATE:
-            print('track_length: track=', track, ' len=', length)
-        #
-        return length
+            
+        return length        
 
+        
     def map_address(self, track, word):
         """
         Map track,word into proper word time
@@ -111,7 +78,7 @@ class G15Drum:
         new_word = word % length
 
         if self.verbosity & VERBOSITY_DRUM_DETAILS:
-            print('map_address: Track=%02d' % track, 'word=%02d' % word, 'address=%02d' % new_word)
+            gl.logprint('map_address: Track=%02d' % track, 'word=%02d' % word, 'address=%02d' % new_word)
 
         return new_word
 
@@ -122,7 +89,7 @@ class G15Drum:
         read_data = self.drum[track][address]
 
         if flag and (self.verbosity & VERBOSITY_DRUM_OP):
-            print('Drum  Read: Track=%02d' % track, ' word=%03d' % word_time,
+            gl.logprint('Drum  Read: Track=%02d' % track, ' word=%03d' % word_time,
                   '  read_data= ', signmag_to_str(read_data),
                   ' /%08x' % read_data)
 
@@ -137,8 +104,8 @@ class G15Drum:
         self.drum[track][address] = write_data
 
         if self.verbosity & VERBOSITY_DRUM_OP:
-            print("Address=", address)
-            print('Drum Write: Track=%02d' % track, ' word=%03d' % word_time,
+            gl.logprint("Address=", address)
+            gl.logprint('Drum Write: Track=%02d' % track, ' word=%03d' % word_time,
                   ' write_data= ', signmag_to_str(write_data), ' /%08x' % write_data)
 
     def write_block(self, block_id, track, data):
@@ -157,8 +124,9 @@ class G15Drum:
         datalength = len(data)
 
         if datalength > track_length:
-            print("Error: source and destination are of different sizes")
-            print("   datalength=", datalength, " track_length=", track_length)
+            gl.logprint("Error: source and destination are of different sizes")
+            gl.logprint("   datalength=", datalength, " track_length=", track_length)
+            return
 
         # move data word by word (to avoid errors)
         address = 0
@@ -197,7 +165,7 @@ class G15Drum:
 
         """
         if amount > 29:
-            print('ERROR: max precess amount exceeded, amount=', amount)
+            gl.logprint('ERROR: max precess amount exceeded, amount=', amount)
 
         for i in range(track_lengths[track]):  # 0-3,1-107
             addr = track_lengths[track] - i - 1
@@ -206,19 +174,19 @@ class G15Drum:
             data_word <<= amount
 
             if self.verbosity & VERBOSITY_DRUM_PRECESS:
-                print('i=', i, 'addr=', addr)
+                gl.logprint('i=', i, 'addr=', addr)
 
             # add bits from lower word
             if addr != 0:
                 new_bits = self.read(track, addr - 1)
 
                 if self.verbosity & VERBOSITY_DRUM_PRECESS:
-                    print('vew-bits = %x' % new_bits)
+                    gl.logprint('vew-bits = %x' % new_bits)
 
                 new_bits >>= 29 - amount
 
                 if self.verbosity & VERBOSITY_DRUM_PRECESS:
-                    print('vew-bits = %x' % new_bits)
+                    gl.logprint('vew-bits = %x' % new_bits)
 
                 data_word |= new_bits
 
@@ -230,7 +198,7 @@ class G15Drum:
         for i in range(length):
             word_time = start_word + i
             data = self.read(track, word_time)
-            print('%-3d' % word_time, ' %08x' % data, ' ', signmag_to_str(data))
+            gl.logprint('%-3d' % word_time, ' %08x' % data, ' ', signmag_to_str(data))
 
     @staticmethod
     def address_decode(tokens):
@@ -243,7 +211,7 @@ class G15Drum:
         """
         ll = len(tokens)
         if (ll < 2) or (ll > 3):
-            print('Error: unknown drum address syntax:  track ":" beginwordtime ":" endwordtime')
+            gl.logprint('Error: unknown drum address syntax:  track ":" beginwordtime ":" endwordtime')
 
         elif ll == 2:
             tokens.append(tokens[1])

@@ -5,6 +5,7 @@ special destination (D=31)
 
 from G15Subr import *
 import G15Cpu_math
+import gl
 
 VERBOSITY_MATH_MULTIPLY = 1
 VERBOSITY_MATH_DIVIDE = 2
@@ -22,6 +23,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
     def __init__(self, cpu, verbosity):
         G15Cpu_math.g15d_math.__init__(self, cpu, verbosity)
         self.cpu = cpu
+        self.emul = cpu.emul
         self.g15 = cpu.g15
         self.verbosity = verbosity
 
@@ -34,7 +36,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
             (after complete CH decode is complete
         """
         if instruction['d'] != SPECIAL:
-            print('INTERNAL ERROR:  D31 handler called, but D31 is invalid')
+            gl.logprint('INTERNAL ERROR:  D31 handler called, but D31 is invalid')
             return
 
         loc = instruction['loc']
@@ -105,15 +107,15 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 # clears AR (if standard format is used)
                 #
                 ar = self.g15.drum.read(AR, 0)
-#                self.d31_special_print("TypeAR, numeric mode", g15d_d31.SPRINT_DONE)
                 self.g15.iosys.slow_out(DEV_IO_TYPE, AR)
                 return
 
         elif instruction['s'] == 9:
-            if loc + 2 >= 108:
-                loctest = loc + 2 - 108 + 20
-            else:
-                loctest = loc + 2
+#            if loc + 2 >= 108:
+#                loctest = loc + 2 - 108 + 20
+#            else:
+#                loctest = loc + 2
+            loctest = (loc + 2) % 108
                 
             if instruction['ch'] == 4 and instruction['s'] == 9 and (loc + 5) == instruction['t']:
                 #
@@ -122,7 +124,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 # prints until l19 is 0 or until 8-bit code group where 7:4]==0
                 #
                 self.unverified_instruction()
-                print()
                 self.d31_special_print('print line 19 in alphanumeric mode - need to add', g15d_d31.SPRINT_DONE)
 
                 self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
@@ -135,22 +136,21 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 #
                 # clears 19 (if standard format is used)
                 #
-#                self.d31_special_print("Type19, numeric mode", g15d_d31.SPRINT_DONE)
-#                print("total_instruction_count", self.cpu.total_instruction_count)
 
                 self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
                 return
 
         elif instruction['s'] == 10:
-            if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
+#            if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
+            if instruction['ch'] == 0:
                 #
                 # punch line 19 to tape
                 # using format in line 02
                 #
+                gl.logprint("Entering handler for special: 10:31, PTP")
                 self.unverified_instruction()
 
-                self.g15.iosys.slow_out(DEV_IO_TYPE, 19)
-                self.d31_special_print('punch line 19 to paper tape, need to implement', g15d_d31.SPRINT_DONE)
+                self.g15.iosys.slow_out(DEV_IO_PTP, 19)
                 return
 
         elif instruction['s'] == 11:
@@ -331,34 +331,65 @@ class g15d_d31(G15Cpu_math.g15d_math):
             return
 
         elif instruction['s'] == 26:
-            #
-            # shift MQ left and ID right under control of command
-            #  (1/2 of T)
-            #
-            # rotate mq and id left until AR=0
-            #  subject limit of T
-            ch = instruction['ch'] & 3
+            if False:
+                #
+                # shift MQ left and ID right under control of command
+                #  (1/2 of T)
+                #
+                # rotate mq and id left until AR=0
+                #  subject limit of T
+                ch = instruction['ch'] & 3
 
-            # get mq and id from drum
-            reg_md = self.g15.drum.read_two_word(MQ, 0)
-            reg_id = self.g15.drum.read_two_word(ID, 0)
-            ar = signmag_to_comp2s (self.g15.drum.read(AR, 0))
+                # get mq and id from drum
+                reg_md = self.g15.drum.read_two_word(MQ, 0)
+                reg_id = self.g15.drum.read_two_word(ID, 0)
+                reg_ar = self.g15.drum.read(AR, 0)
 
-            for j in range(instruction['t'] >> 1):
-                # rbk rewrote this
-                reg_md <<= 1
-                reg_md &= MASK58BIT
-                reg_id >>= 1
-                ar += 1		# python integers in ar
-		   # it's the end-carry (result of incr =0) that stops the shift
-                if ar==0 and ch==0:
-                    break
+                for j in range(instruction['t'] >> 1):
+                    if reg_ar & (1 << 29):
+                        reg_ar = 0
+                        break
+                    reg_md <<= 1
+                    reg_md &= MASK58BIT
+                    reg_ar += 2
+                    reg_id >>= 1
 
-            self.g15.drum.write_two_word(MQ, 0, reg_md)
-            self.g15.drum.write_two_word(ID, 0, reg_id)
-            if ch == 0:
-                self.g15.drum.write(AR, 0, int_to_signmag(ar) )
-            return
+                self.g15.drum.write_two_word(MQ, 0, reg_md)
+                self.g15.drum.write_two_word(ID, 0, reg_id)
+                if ch == 0:
+                    self.g15.drum.write(AR, 0, reg_ar & MASK29BIT)
+                return
+
+            else:
+                #
+                # shift MQ left and ID right under control of command
+                #  (1/2 of T)
+                #
+                # rotate mq and id left until AR=0
+                #  subject limit of T
+                ch = instruction['ch'] & 3
+
+                # get mq and id from drum
+                reg_md = self.g15.drum.read_two_word(MQ, 0)
+                reg_id = self.g15.drum.read_two_word(ID, 0)
+                ar = signmag_to_comp2s (self.g15.drum.read(AR, 0))
+
+                for j in range(0, instruction['t'], 2):
+                    # rbk rewrote this
+                    reg_md <<= 1
+                    reg_md &= MASK58BIT
+                    reg_id >>= 1
+                    if ch == 0:         # {PRM:[pg78]}
+                        ar += 1		# python integers in ar
+                    # it's the end-carry (result of incr =0) that stops the shift
+                    if ar==0 and ch==0:
+                        break
+
+                self.g15.drum.write_two_word(MQ, 0, reg_md)
+                self.g15.drum.write_two_word(ID, 0, reg_id)
+                if ch == 0:
+                    self.g15.drum.write(AR, 0, int_to_signmag(ar) )
+                return
 
         elif instruction['s'] == 27:
             #
@@ -390,14 +421,13 @@ class g15d_d31(G15Cpu_math.g15d_math):
                 if self.g15.iosys.get_status() == IO_STATUS_READY:
                     instruction['next_cmd_word_time'] += 1
             elif ch == 1 or ch == 2:
-                print('test external IO register status -- ignored')
+                gl.logprint('test external IO register status -- ignored')
             elif ch == 3:
                 if self.cpu.status_da1 == 0:
                     instruction['next_cmd_word_time'] += 1
             return
 
         elif instruction['s'] == 29:
-            #if instruction['ch'] == 0 and (loc + 2) == instruction['t']:
             if instruction['ch'] == 0:
                 #
                 # test overflow
@@ -412,7 +442,6 @@ class g15d_d31(G15Cpu_math.g15d_math):
             return
             
         elif instruction['s'] == 31:
-            # if instruction['ch'] == 0 and (loc + 2) == instruction['t'] and (loc + 1) == instruction['n']:
             if instruction['ch'] == 0:
                 #
                 # take next command from AR
@@ -433,7 +462,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
                     self.g15.drum.write(M18, time, data)
                 return
 
-        print('ERROR: UNKNOWN special command')
+        gl.logprint('ERROR: UNKNOWN special command')
         self.unverified_instruction()
         return
 
@@ -450,20 +479,25 @@ class g15d_d31(G15Cpu_math.g15d_math):
         next_cmd_time = instruction['n']  # default case
         end_search = instruction['n']  # one beyond end
         if end_search < start_search: end_search += 108
-        self.cpu.cpu_log.msg2 ("RETURN: search range: " + str(start_search) + ".." + str(end_search) + "  ")	# @@@
+        
+        if self.verbosity & VERBOSITY_D31_MARKRET:                
+            self.emul.log.msg2 ("RETURN: search range: " + str(start_search) + ".." + str(end_search) + "  ")	# @@@
+
         for wt in range(start_search, end_search):  # start_search..N-1 inclusive
             if (wt % 108) == marked_word:
-                if self.verbosity & VERBOSITY_D31_MARKRET:
-                    print("FOUND MARK for ", wt, "/", marked_word)	# @@@
-                    self.cpu.cpu_log.msg("FOUND MARK for ". str(wt) +  "/" +  str(marked_word))	# @@@
+            
+                if self.verbosity & VERBOSITY_D31_MARKRET:                
+                    gl.logprint("FOUND MARK for ", wt, "/", marked_word)	# @@@
+                    self.emul.log.msg("FOUND MARK for ". str(wt) +  "/" +  str(marked_word))	# @@@
+
                 next_cmd_time = marked_word
                 break
 
         instruction['next_cmd_word_time'] = next_cmd_time
-        self.cpu.cpu_log.msg ("RETURN to: " + str(next_cmd_time))			# @@@
-
+        
         if self.verbosity & VERBOSITY_D31_MARKRET:
-            print("\tRTMv0.33: xx-", instruction['time_end'], "  marked_word=", marked_word, " N=", instruction['n'],
+            self.emul.log.msg ("RETURN to: " + str(next_cmd_time))			# @@@
+            gl.logprint("\tRTMv0.33: xx-", instruction['time_end'], "  marked_word=", marked_word, " N=", instruction['n'],
                   " searching:", start_search, "-", end_search - 1, " next_cmd_word_time=",
                   instruction['next_cmd_word_time'])
 
@@ -477,17 +511,15 @@ class g15d_d31(G15Cpu_math.g15d_math):
 
         cmdLineMapped = cmd_line_map_names[instruction['next_cmd_line']]
 
-#        self.cpu.cpu_log.msg ("MARK set: " + str(self.cpu.mark_time))			# @@@
-
         if self.verbosity & VERBOSITY_D31_MARKRET:
-            print("cmdLineMapped", cmdLineMapped)
-            print("MARK set: ", cmdLineMapped + "." + str(self.cpu.mark_time))
+            gl.logprint("cmdLineMapped", cmdLineMapped)
+            gl.logprint("MARK set: ", cmdLineMapped + "." + str(self.cpu.mark_time))
 
     def unverified_instruction(self):
         """ Increment unverifiied instuction execution count """
 
-        print('unverified instruction detected, instr = ', instr_2_hex_string(self.cpu.instruction['instr']))
-        print('\t', self.cpu.instruction)
+        gl.logprint('unverified instruction detected, instr = ', instr_2_hex_string(self.cpu.instruction['instr']))
+        gl.logprint('\t', self.cpu.instruction)
 
         self.cpu.unknown_instruction_count += 1
 
@@ -495,7 +527,7 @@ class g15d_d31(G15Cpu_math.g15d_math):
         """ Limit descriptive prints to once during an instruction time """
 
         if not self.cpu.instruction['d31_print_flag']:
-            print(txt)
+            gl.logprint(txt)
 
         if flag == g15d_d31.SPRINT_DONE:
             self.cpu.instruction['d31_print_flag'] = 1  # re=enable d31 prints

@@ -7,6 +7,7 @@ class G15TypeNumeric:
     def __init__(self, g15, Verbosity=0):
         self.verbosity = Verbosity
         self.g15 = g15
+        self.emul = g15.emul
 
         self.output_history = []            # output (and input) history buffer
         self.input_buffer = []              # line buffer of G15 symbols types, ready for transfer to G15
@@ -18,7 +19,7 @@ class G15TypeNumeric:
             if (c == ' ') or (c == '\t'):
                 continue
                 
-            if c in '01234567':
+            if c in '1234567':
                 self.g15.cpu.instruction['next_cmd_line'] = int(c, 0)
                 continue
 
@@ -32,7 +33,7 @@ class G15TypeNumeric:
                 continue
 
             if c == 'c':
-                self.g15.cpu.instruction['next_cmd_line'] = self.g15.cpu.instruction['ch']
+                self.g15.cpu.instruction['next_cmd_line'] = 0
                 continue
                 
             if c == 'i':
@@ -44,12 +45,16 @@ class G15TypeNumeric:
                 continue
                 
             if c == 'm':
-                self.g15.cpu.cpu_d31.GoToMask(self.g15.cpu.instruction)
+                ARvalue = self.g15.drum.read(AR, 0)
+                self.g15.drum.write(M1, 107, ARvalue)
+                CMvalue = self.g15.drum.read(CM, 0)  # note emulator does use CM
+                CMneg = (~CMvalue) & MASK29BIT
+                self.g15.drum.write(M0, 107, CMneg)
                 continue
 
             if c == 'p':
                 # read a block of paper tape
-                print("enable-p detected")
+                gl.logprint("enable-p detected")
                 self.g15.ptr.read_block()
                 self.g15.cpu.instruction['next_cmd_word_time'] = 0
                 self.g15.cpu.instruction['next_cmd_line'] = 7
@@ -60,7 +65,11 @@ class G15TypeNumeric:
                 continue
                 
             if c == 'r':
-                self.g15.cpu.cpu_d31.ReturnToMark(self.g15.cpu.instruction)
+                ARvalue = self.g15.drum.read(M1, 107)
+                self.g15.drum.write(AR, 0, ARvalue)
+                CMneg = self.g15.drum.read(M1, 107)
+                CMvalue = (~CMvalue) & MASK29BIT
+                self.g15.drum.write(CM, 0, CMvalue)
                 continue
 
             if c == 's':
@@ -104,7 +113,7 @@ class G15TypeNumeric:
             for c in ascii_str:
                 self.out_history[-1] += c
                 outbuffer += c
-#            print("TYPEOUT3: ", outbuffer)
+            gl.logprint("TYPEOUT: ", outbuffer)
 
     def read(self):
         # characters from keyboard,
@@ -125,7 +134,7 @@ class G15TypeNumeric:
         #
         # if called without a 'typed' string, then display typewrite history
         if in_str == '':
-            print(self.output_history)
+            gl.logprint(self.output_history)
             return
                     
         if self.g15.cpu.sw_enable == 'on':
@@ -135,7 +144,7 @@ class G15TypeNumeric:
                     
         # if not control input, take as data if IOsys is accepting typewriter input
         if self.g15.iosys.status != IO_STATUS_IN_TYPEWRITER:
-            print('warning, typewriter input ignored, g15 not in type io mode')
+            gl.logprint('Warning: Typewriter input ignored, g15 not in type io mode')
             return
 
         cmd_str = 'type '

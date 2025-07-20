@@ -7,6 +7,7 @@ NOTE:  This is a ISA emulator working at the word/instruction level
 
 import sys
 import copy
+import time
 
 from G15Subr import *
 import G15Cpu_ar
@@ -18,8 +19,7 @@ import G15Cpu_ib
 import G15Cpu_lb
 import G15Cpu_d31
 import G15Cpu_store
-import G15Cpu_log
-import time
+import gl
 
 VERBOSITY_CPU_DETAILS = 1
 VERBOSITY_CPU_TRACE = 2
@@ -46,13 +46,13 @@ class G15Cpu:
     """ Emulates the CPU portion of a G15D computer """
 
     # noinspection PyPep8Naming
-    def __init__(self, g15, Verbosity=0x00, vtracefile="", signenable=0):
+    def __init__(self, g15, Verbosity=0x00, tracefile="", signenable=0):
         self.g15 = g15  # back pointer to g15 main class
         self.emul = g15.emul
         self.verbosity = Verbosity
 #        self.verbosity = VERBOSITY_CPU_TRACE
 
-        self.vtracefile = vtracefile
+        self.tracefile = tracefile
         self.signenable = signenable    # print numbers with sign+28 instead of 29 bits
 
         subr_init()
@@ -65,8 +65,7 @@ class G15Cpu:
         self.cpu_lb = G15Cpu_lb.g15d_lb(self)
         self.cpu_d31 = G15Cpu_d31.g15d_d31(self, self.verbosity)
         self.cpu_store = G15Cpu_store.g15d_store(self)
-        self.vtrace_enabled = False
-        self.cpu_log = G15Cpu_log.g15d_log(self, self.verbosity & VERBOSITY_CPU_LOG_STDOUT, vtracefile)    # Verilog trace output
+        self.trace_enabled = self.emul.traceenable
 
         self.cpu_ar = G15Cpu_ar.g15d_AR(self)
         self.cpu_pn = G15Cpu_pn.g15d_PN(self, self.verbosity)
@@ -83,10 +82,21 @@ class G15Cpu:
 
         # initial switch based variables
         self.power_status = 0
-        self.sw_enable = 0
-        self.sw_tape = 0
-        self.sw_compute = 0
-        self.sw_compute_bp_enable = 0
+
+        sw_mappings['enable']['handler'] = self.sw_enable_h
+        sw_mappings['tape']['handler'] = self.sw_tape_h
+        sw_mappings['compute']['handler'] = self.sw_compute_h
+        sw_mappings['dc']['handler'] = self.button_dc_h
+        
+        sw_mappings['enable']['handler']('off')
+        sw_mappings['tape']['handler']('off')
+        sw_mappings['compute']['handler']('off')
+        sw_mappings['dc']['handler']('off')
+        
+#        self.sw_enable = 0
+#        self.sw_tape = 0
+#        self.sw_compute = 0
+#        self.sw_compute_bp_enable = 0
 
         self.cpu_init('off')
         self.bell_ring_count = 0
@@ -100,9 +110,6 @@ class G15Cpu:
         # num of detected errors (other than unknown instr)
         self.errors = 0
 
-        # default is silent running
-        self.trace_flag = 0
-        self.file_elog = None
         self.music_enable = False
                 
         self.word_time = 0
@@ -110,7 +117,6 @@ class G15Cpu:
     def cpu_init(self, power_status):
         """
         Initializes the internal variable used the G15 CPU emulator
-
         Is called by dc_button() when the DC Power On or Power Off buttons are depressed
 
         :param power_status: 1=Power On Button, 0=Power Off Button
@@ -119,11 +125,9 @@ class G15Cpu:
         # noinspection PyDictCreation
         instruction = {}
         instruction['instr'] = 0
-#        instruction['cmd_line'] = 7     # start execution at 23:0
         instruction['cmd_line'] = 6     # start execution at 23:0
         instruction['n'] = 0
         instruction['next_cmd_word_time'] = 0
-#        instruction['next_cmd_line'] = 7
         instruction['next_cmd_line'] = 6
         instruction['next_cmd_acc'] = 0
         instruction['cmd_acc'] = 0
@@ -140,6 +144,12 @@ class G15Cpu:
         self.bell_count = 0  # number of times that bell has been rung
         self.power_status = power_status
         self.halt_status = 0
+        
+    def cpu_close(self):
+            # do we have an open logfile?
+            if self.cpu_log is not None:
+                if self.cpu_log != sys.stdout:
+                    self.cpu_log.close()  
 
     #####################################
     #
@@ -147,9 +157,10 @@ class G15Cpu:
     #
     #####################################
     def button_dc_h(self, value):
+        
         if (value == 'on') and (self.power_status == 'off'):
             # apply power from a no power state
-            print("Applying power")
+            gl.logprint("Applying power")
             # intiialize next instr address and cpu flags
             self.cpu_init(value)
     
@@ -157,7 +168,7 @@ class G15Cpu:
             #
             # first: check that we have a paper tape mounted
             if len(self.g15.ptr.tape_parsed) == 0:
-                print('User Error: no paper tape is mounted')
+                gl.logprint('User Error: no paper tape is mounted')
                 return
     
             # second: rewind the tape
@@ -169,12 +180,12 @@ class G15Cpu:
 
             # fourth: verify that block read was number track
             if not self.g15.ptr.check_if_numbertrack(self.block):
-                print('Mounted paper tape does not have number first tape block')
-                print('Power is NOT applied, please mount a tape with NT')
+                gl.logprint('Mounted paper tape does not have number first tape block')
+                gl.logprint('Power is NOT applied, please mount a tape with NT')
                 return
             else:
-                print('Number Track found')
-                print('Copying Number Track into Place')
+                gl.logprint('Number Track found')
+                gl.logprint('Copying Number Track into Place')
 
             # fifth: copy line 19 to CN
             # copy M19 into CN (number track)
@@ -189,11 +200,7 @@ class G15Cpu:
             # off button pressed, while power is applied
             # turn things off
             self.cpu_init(value)
-
-            # do we have an open logfile?
-            if self.cpu_log is not None:
-                if self.cpu_log != sys.stdout:
-                    self.cpu_log.close()    
+  
         else:
             # same button pressed again, ignore it
             pass  
@@ -207,20 +214,22 @@ class G15Cpu:
             self.g15.ptr.read_index = 0     # rewind the tape
         elif value == "punch":
             pass
+        else:           # center
+            pass
                 
     def sw_compute_h(self, value):
         self.halt_status = 0
-        print("compute sw: instr=", self.instruction)
+        # gl.logprint("compute sw: instr=", self.instruction)
         self.sw_compute = value
         if value == "bp":
-            self.sw_compute_bp_enable = 1
-        else:
-            self.sw_compute_bp_enable = 0
-
-    @staticmethod
-    def cmd_run(_value):
-        print("OOPS   cpu.cmd_run has been called")
-        pass    # move up one?
+            self.sw_compute_bp_enable = True
+            self.RUNSTATE = STATE_RUNNING
+        elif value == 'go':
+            self.sw_compute_bp_enable = False
+            self.RUNSTATE = STATE_RUNNING
+        else:       # center
+            self.sw_compute_bp_enable = False
+            self.RUNSTATE = STATE_IDLE
 
     ########################################################################
     #
@@ -235,15 +244,13 @@ class G15Cpu:
 
         :param trace_flag:      1=print machine state following instruction
         """
-        if self.verbosity & VERBOSITY_CPU_TRACE:
-            trace_flag = 1
 
         if self.verbosity & VERBOSITY_CPU_DETAILS:
-            print('entering exec instr')
+            gl.logprint('entering exec instr')
 
         if not self.power_status:
-            print("DC power has not been applied")
-            print("Enter 'button dc on' to apply")
+            gl.logprint("DC power has not been applied")
+            gl.logprint("Enter 'button dc on' to apply")
             return -1
 
         # get/fetch the instruction (retain origin of instruction + the 29bit instruction
@@ -253,8 +260,6 @@ class G15Cpu:
         # display instruction
         # note: most emulators display results of insturctions
         # but since we are debugging the emulator, we display the instruction first
-        if trace_flag:
-            print("%6d"%self.total_instruction_count + '\t' + instruction['disassembly'])
 
         # determine the begining and ending times for this instruction
         time_start = instruction['time_start']
@@ -263,9 +268,9 @@ class G15Cpu:
         self.g15.drum.revolution_check(time_end % 108)
 
         if self.verbosity & (VERBOSITY_CPU_DEBUG | VERBOSITY_CPU_MICRO_TRACE):
-            print('\t        Number of instructions executed: ', self.total_instruction_count)
-            print('instruction=', instruction)
-            print('word times: start=', time_start % 108, ' end=', time_end % 108)
+            gl.logprint('\t        Number of instructions executed: ', self.total_instruction_count)
+            gl.logprint('instruction=', instruction)
+            gl.logprint('word times: start=', time_start % 108, ' end=', time_end % 108)
 
         # perform the instruction
         #   specials in the emulator execute once at the end time slot (so the bus logs align with Verilog trace)
@@ -279,7 +284,7 @@ class G15Cpu:
                 te += 108
 
             if self.verbosity & VERBOSITY_CPU_TRACE:
-                print("\tts=", time_start, " te=", te, '/', te % 108)
+                gl.logprint("\tts=", time_start, " te=", te, '/', te % 108)
 
             self.te = te
             for self.word_time in range(time_start, te + 1):
@@ -290,8 +295,11 @@ class G15Cpu:
 
         # add drum revolution pause if we are playing music
         if self.g15.drum.revolution_check(time_end % 108):
-            if self.emul.music.music_enable:
-                time.sleep(TRACK_TIME / 1000000)
+            try:
+                if self.emul.music.music_enable:
+                    time.sleep(TRACK_TIME / 1000000)
+            except:
+                pass
 
         # at end of drum rev, check slow_out (handles M19 print)
         rotate = False
@@ -306,25 +314,21 @@ class G15Cpu:
         if instruction['bp']:
             self.sw_compute_bp_enable = 0
             if self.verbosity & VERBOSITY_CPU_MICRO_TRACE:
-                print("Cpu has hit breakpoint")
+                gl.logprint("Cpu has hit breakpoint")
 
         # noinspection PyUnboundLocalVariable
-        if self.vtrace_enabled:
-            self.cpu_log.logger(time_start, time_end, early_bus, intermediate_bus, late_bus)
+        if self.trace_enabled:
+            self.emul.log.logger(time_start, time_end, early_bus, intermediate_bus, late_bus)
 
         # increment instruction count
         self.total_instruction_count += 1
-
-        # if trace_flag:
-        if self.verbosity & VERBOSITY_CPU_MICRO_TRACE:
-            self.status_cpu()
 
         time2next_instr = 1
         return time2next_instr
 
     def execute(self, instruction, word_time):
         if self.verbosity & VERBOSITY_CPU_DEBUG:
-            print('==== word_time ====', word_time % 108)
+            gl.logprint('==== word_time ====', word_time % 108)
 
         ###########################################
         #
@@ -346,15 +350,15 @@ class G15Cpu:
         late_bus = self.cpu_lb.late_bus(intermediate_bus, instruction)
 
         if self.verbosity & VERBOSITY_CPU_DEBUG:
-            print('\nword time=', word_time)
-            print("%15s:" % "early_bus", '  %08x' % early_bus, '%08x' % (early_bus >> 1))
-            print("%15s:" % "intermediate_bus", '  %08x' % intermediate_bus, '  %08x' % (intermediate_bus >> 1))
-            print("%15s:" % "late_bus", '  %08x' % late_bus, '  %08x' % (late_bus >> 1))
+            gl.logprint('\nword time=', word_time)
+            gl.logprint("%15s:" % "early_bus", '  %08x' % early_bus, '%08x' % (early_bus >> 1))
+            gl.logprint("%15s:" % "intermediate_bus", '  %08x' % intermediate_bus, '  %08x' % (intermediate_bus >> 1))
+            gl.logprint("%15s:" % "late_bus", '  %08x' % late_bus, '  %08x' % (late_bus >> 1))
 
-        self.cpu_store.store_late_bus(late_bus, instruction, word_time)
+        self.cpu_store.store_late_bus(late_bus, early_bus, instruction, word_time)
 
         if self.verbosity & VERBOSITY_CPU_TRACE:
-            print("%6d" % self.total_instruction_count, "\t\t\t\twrite",
+            gl.logprint("%6d" % self.total_instruction_count, "\t\t\t\twrite",
                   str(instruction['d']) + '.' + str(instruction['word_time'] % 108) + ': %8s' % signmag_to_str(late_bus))
 
         if instruction['d'] == SPECIAL:
@@ -378,84 +382,46 @@ class G15Cpu:
                 # moving a complete line in memory
                 # so copy drum origin track id
                 self.g15.drum.track_origin[destination] = self.g15.drum.track_origin[source]
-                print("Copying line: ", source, " to line: ", destination)
+                gl.logprint("Copying line: ", source, " to line: ", destination)
 
         # check if music is playing and copying a new note into a track
-        if self.emul.music.music_enable and exec_length == 108:
-            self.g15.emul.music.trackcopy(instruction)
+        try:
+            if self.emul.music.music_enable and exec_length == 108:
+                self.g15.emul.music.trackcopy(instruction)
+        except:
+            pass
 
-    #
-    # take 29 bit word, return signed integer, and a string
-    @staticmethod
-    def word29decode(value29):
-        """ Converts a 29bit value to int and str """
-        value = value29 >> 1
-        sign = value29 & 1
-
-        if sign == 1:
-            value = -value
-            str_value = '-'
-        else:
-            str_value = ' '
-        #
-            str_value += '%08x' % value
-        #
-        return value, str_value
-
-    #
-    ##############################
-    #
-    # print a log of instruction execution to compare against Verilog results
-    #
-    #############################
-    #
-    @staticmethod
-    def word_time_rollover(num):
-        while num >= 108:
-            num = num - 108
-        return num
-
-    def status_cpu(self):
+    def Status(self):
         acc = self.g15.drum.read(AR, 0)
 
-        print('\nG15 CPU Status:')
+        gl.logprint('\nG15 CPU Status:')
 
         if self.power_status:
             status = 'ON'
         else:
             status = 'OFF'
             
-        print('\tDc Power is: ' + status)
-        print('\t  IO status: ', io_status_str[self.g15.iosys.status])
-#        print('\t   IO Ready: ', self.g15.iosys.get_status())
-        print('\t         AR: ', int_to_str(acc))
-        print('\t  acc_carry: ', self.acc_carry, ' OvrFlow: ', self.overflow)
-        print('\t     DA1_GO: ', self.status_da1)
-        print('\t       HALT: ', self.halt_status)
+        gl.logprint('\tDc Power is: ' + status)
+        gl.logprint('\t  IO status: ', io_status_str[self.g15.iosys.status])
+#        gl.logprint('\t   IO Ready: ', self.g15.iosys.get_status())
+        gl.logprint('\t         AR: ', int_to_str(acc))
+        gl.logprint('\t  acc_carry: ', self.acc_carry, ' OvrFlow: ', self.overflow)
+        gl.logprint('\t     DA1_GO: ', self.status_da1)
+        gl.logprint('\t       HALT: ', self.halt_status)
         
         cmd_line = self.instruction['next_cmd_line']
         cmd_track = cmd_line_map[cmd_line]
-        print('\t    CmdLine: ', cmd_line, '(' + str(cmd_track) + ') N:',
+        gl.logprint('\t    CmdLine: ', cmd_line, '(' + str(cmd_track) + ') N:',
               instr_dec_hex_convert(self.instruction['next_cmd_word_time']))
 
         #
-        # display next instruction
-        #
-        next_instr_dict = copy.deepcopy(self.instruction)
-        next_instr_dict['instr'] = self.g15.drum.read(cmd_track, self.instruction['next_cmd_word_time'])
-        print("*** TURN ON DISASSEMBLY OF NEXT INSTRUCTION")
-        
-        #
         # $ of insturctions executed to date
         #
-        print()
-        print('\t  Number of unknown instructions executed: ', self.unknown_instruction_count)
-        print('\t          Number of instructions executed: ', self.total_instruction_count)
-        print('\t               Number of drum revolutions: ', self.total_revolutions)
-        print('\tEstimated execution time on real G15 (ms): ', (self.total_revolutions * TRACK_TIME)/1000.0 )
-        print()
-        print('\t                     Number of Bell Rings: ', self.bell_ring_count)
+        gl.logprint()
+        gl.logprint('\t          Number of instructions executed: ', self.total_instruction_count)
+        gl.logprint('\t  Number of unknown instructions executed: ', self.unknown_instruction_count)
+        gl.logprint('\t               Number of drum revolutions: ', self.total_revolutions)
+        gl.logprint('\tEstimated execution time on real G15 (ms): ', (self.total_revolutions * TRACK_TIME)/1000.0 )
+        gl.logprint()
+        gl.logprint('\t                     Number of Bell Rings: ', self.bell_ring_count)
 
-    # gather machine status for display
-    def Status(self):
-        self.status_cpu()

@@ -17,103 +17,111 @@ Futures:
    paper tape punch is not modelled, but planned
    magnetic tape is not modelled, but planned
 """
+MUSIC=False
+
 import queue
 import threading
 from time import sleep
 import signal
+import sys
 
 import G15Numeric
-from EmulLogger import *
-import EmulAscii
-import EmulCmds
+import EmulLogger
 from G15Constants import *
-import EmulMusic
-import EmulGetc
+if MUSIC:
+    import EmulMusic
+import EmulGetLine
+import EmulCmds
+import gl
 
 known_g15_configurations = {
-    'numeric': G15Numeric.G15Numeric
+    'numeric': G15Numeric.G15Numeric        # numeric machine, no mag tape units
 }
 
 
 class Emulator:
     def __init__(self, args):
         self.configuration = args.configuration
-        self.startfiles = args.startfiles
-        self.vtrace = args.vtrace
+        self.startfiles = [args.startfile]
+        self.traceenable = args.traceenable
         self.signenable = args.signenable
-        self.scriptfile = args.scriptfile
-        self.tapename = args.tapename
+        self.scriptfiles = args.scriptfiles
+        self.tapedir = args.tapedir
         
         self.verbosity = 0
+        
+        # determine g15 program(s) to execute
+        if self.scriptfiles is not None:
+            if isinstance(self.scriptfiles, str):
+                self.scriptfiles = [self.scriptfiles]
+            for scriptfile in self.scriptfiles:
+                self.startfiles.append(scriptfile)
+       
+        # build emulation
+        print('hello')
+        self.log = EmulLogger.EmulLogger(self, args.logfile)
+        self.interactive = True    # if interactive, prints to both log and screen
+        print("xyzzy")
+        
+        gl.logprint('Welcome to the BendixG15 python emulator, version: ' + args.version + '\n')
 
-        if args.logfile is not None:
-            # logfile specified
-            # let's override prints to stdout to also print to file
-            sys.stdout = EmulLogger(args.logfile)
-
-        print('Loading configuration: ', self.configuration)
+        gl.logprint('Note:', 'Loading configuration: ', self.configuration)
 
         if self.configuration in known_g15_configurations:
-            self.g15 = known_g15_configurations[self.configuration](self, self.vtrace, self.tapename, self.signenable)
+            self.g15 = known_g15_configurations[self.configuration](self, self.traceenable, self.tapedir, self.signenable)
         else:
-            print('Unknown G15D configuration:', self.configuration)
+            gl.logprint('Unknown G15D configuration:', self.configuration)
             sys.exit(1)
 
         self.cpu = self.g15.cpu
         self.error_count = 0
-        self.getc = EmulGetc.CharIO(self)
         self.g15.bkuker = args.bkuker
 
-        self.music = EmulMusic.EmulMusic(self.g15)
+        self.log.cpu_attach(self.cpu)       # attach cpu to the logger (gives pointers)
 
-        # queue for messages across thread boundary
-        self.qcmd = queue.Queue()	        # cmds -> cpu
+        if MUSIC:
+            self.music = EmulMusic.EmulMusic(self.g15)
 
-        # bring in the command interpreter
         signal.signal(signal.SIGINT, self.sigC_handler)
         
-        self.number_instructions_to_execute = 0
-        self.execute_trace_enable = 0
-        self.cmd_pause_count = 0
+        self.number_instructions_to_execute = 0     # num of cmds to execute
+        self.cmd_pause_count = 0                    # numb of cmds to pause cmd file processing
 
-        self.ascii = EmulAscii.EmulAscii(self)
+        # bring in the command interpreter
+        self.getline = EmulGetLine.EmulGetLine(self)
         self.cmds = EmulCmds.EmulCmds(self, self.g15)
-        
-        # start execution
-        #  main thread: cmds
-        #  2nd thread: g15
-        self.lock_request = SIM_REQUEST_UNLOCK
-        self.lock_status = SIM_REQUEST_UNLOCK
-        self.runflag = 1
-        
-        print("Bringing up Emulator and G15 machine")
-        self.t2 = threading.Thread(target=self.getc.thread_getchars, daemon=True)
-        self.t2.start()
 
+        self.RUNSTATE = STATE_IDLE
+        self.exit_emulator = False
+
+        gl.logprint("Bringing up Emulator and G15 machine")
+
+        # character IO is in background thread  (needs to become foreground thread)
+        # today is attached same terminal window
+        # future this thread gets replaced with a GUI or two
+        self.t1 = threading.Thread(target=self.processor_thread, daemon=True)
+        self.t1.start()
+
+        # foreground thread deals with host IO
+        self.getline.thread_getline()      # infinite loop, returns only on exit
+
+    def processor_thread(self):
         # setup is complete, good to start
         # execute startup files
-        if self.scriptfile is not None:
-            self.startfiles.append(self.scriptfile)
-
         self.cmds.start(self.startfiles)
 
-        # start the procssor
-        self.execution_loop()
-
-        if args.logfile:
-            # close the logfile
-            sys.stdout.close()
+        # start the processor
+        self.execution_loop()       # remain in loop until emul finishes                
             
     def execution_loop(self):
-        # G15 runs in its own thread
-        # #    old, G15 now runs in the background thread,
-    	# runflag will exit the thread
-        while self.runflag:
-            # note: runflag = 0 will cause thread to exit
+        halted_flag = False
+
+        while not self.exit_emulator:
+            # note: runflag = 0 will cause thread/emulator to exit
 
             # execute enable keys
-            if not self.getc.q_enable.empty():
-                cmd = self.getc.q_enable.get()
+            if not self.getline.q_enable.empty():
+                cmd = self.getline.q_enable.get()
                 self.g15.typewriter.type_enable(cmd)
 
             # g15 executes any recv messages
@@ -121,24 +129,17 @@ class Emulator:
             if self.cmd_pause_count == 0 and self.number_instructions_to_execute == 0:
                 self.cmds.cmd_do_from_processor_loop()
 
-            self.g15.cmds.do_cmd()
+#            self.g15.cmds.do_cmd()
 
-#            if self.g15.cpu.total_instruction_count == 12463:
-#                print("test, set bp here")
-
-            ok2run = 0
-            # compute is used during interactive emulator use
-            if self.cpu.sw_compute_bp_enable or self.cpu.sw_compute == 'go':
-                ok2run = 1
-
-            # run command is typically used during batch test operation
-            # and run executes specified number of commands
-            if self.number_instructions_to_execute:
-                ok2run = 1
+            ok2run = self.RUNSTATE
             if self.cpu.halt_status:
-                print("Machine is halted!")
-                ok2run = 0
+                if not halted_flag:
+                    print("Machine is halted!")
+                halted_flag = True
+                ok2run = False
                 self.number_instructions_to_execute = 0		# early termination of "run"
+            else:
+                halted_flag = 0
 
             # execute an instruction
             if ok2run:
@@ -146,7 +147,9 @@ class Emulator:
                 if retvalue > 0:  # negative number is error/no execution
                     # reflect that we did execute an instruction
                     self.number_instructions_to_execute -= 1
-                    
+                    if self.number_instructions_to_execute == 0:
+                        self.RUNSTATE = STATE_IDLE
+
                     # count down cmd pause, if we are paused
                     if self.cmd_pause_count != 0:
                         self.cmd_pause_count -= 1
@@ -160,20 +163,22 @@ class Emulator:
         self.quit()
         
     def quit(self):
-        print("Quitting Emulator")
-        self.runflag = 0    # stops execution loop AND getchar loop
-        self.music.close()
-        sleep(0.2)
-        self.ascii.close()
-        sys.exit(0)
-        
-    def send_mesg(self, mesg_type, mesg_value):
-        mesg = [mesg_type, mesg_value]
-        self.qcmd.put(mesg)
+        gl.logprint("Quitting Emulator")
+        self.exit_emulator = True   # stops execution loop AND getchar loop
+        try:
+            self.music.close()
+        except:
+            pass
 
-    def get_mesg(self):
-        mesg = self.qcmd.get()
-        return mesg
+        sleep(0.2)
+        self.getline.close()        # graceful shutdown host io subsystem
+
+        # last thing to do during shutdown is close the logfile
+        if args.logfile:
+            # close the logfile
+            sys.stdout.close()
+            
+        sys.exit(0)
 
     def increment_error_count(self, mesg):
         print("ERROR: ", mesg)

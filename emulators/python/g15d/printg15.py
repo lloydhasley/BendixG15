@@ -12,12 +12,13 @@ pg15_hex = "0123456789uvwxyz"
 
 pg15_file = sys.stdout
 pg15_flush = False
+pg15_buffer = []
 
 
 def putcg15(ch):
-    pg15_file.write(ch)
-    if pg15_flush:
-        pg15_file.flush()
+    global pg15_buffer
+
+    pg15_buffer.append(ch)
 
 
 def printg15_int(value, base, sign):
@@ -33,9 +34,12 @@ def printg15_int(value, base, sign):
         buffer.append(pg15_hex[cint])
     if neg:
         buffer.append('-')
+    
+    for c in buffer:
+        putcg15(c)
 
 
-def printg15(*args):
+def printfg15(*args):
     global pg15_file
     global pg15_flush
 
@@ -46,6 +50,7 @@ def printg15(*args):
     # check for keywords
     #    set keywords, place other onto list
     args1 = []
+    found_keywords = []
     for arg in args:
         for keyword in pg15_keywords:
             try:
@@ -53,20 +58,35 @@ def printg15(*args):
                 if arg[:ll] == keyword:
                     key = keyword[:-2]
                     locals()[key] = arg[ll:]
+                    
+                    found_keywords.append(arg)
             except:
                 pass
         else:
             args1.append(arg)
 
-    pg15_file = file
-    if isinstance(flush, str):
-        if flush == "True":
-            pg15_file = True
-        else:
-            pg15_file = False
-    else:
-        pg15_flush = flush
+    buffer = sprintg15(args1)
+    print(buffer, found_keywords)
+    
+#    pg15_file = sys.stdout
+#    if file != sys.stdout:
+#        pg15_file = open("pg15_file", "a")
+        
+#    pg15_file.write(buffer)
+    
+#    if pg15_flush:
+#        pg15_file.flush()    
 
+#    pg15_file = file
+#    if isinstance(flush, str):
+#        if flush == "True":
+#            pg15_file = True
+#        else:
+#            pg15_file = False
+#    else:
+#        pg15_flush = flush
+        
+def sprintfg15(*args):
     # args1 is now list of arguments minus the keywords
     fmt = args1[0]
     args1 = args1[1:]
@@ -100,7 +120,9 @@ def printg15(*args):
 
     for c in end:
         putcg15(c)
-
+    
+    buffer = "".join(pg15_buffer)
+    return buffer
 
 # equivalent int but uses g15 hex char
 # and does not bomb w illegal char, instead stops processing

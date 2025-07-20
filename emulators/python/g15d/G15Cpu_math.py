@@ -42,7 +42,7 @@ class g15d_math:
             reg_mq &= mask58
 
             if debug:
-                print('cwt=', wt + (2 * i), 'pn=%015x' % reg_pn, ' id=%015x' % reg_id, ' mq=%015x' % reg_mq)
+                gl.logprint('cwt=', wt + (2 * i), 'pn=%015x' % reg_pn, ' id=%015x' % reg_id, ' mq=%015x' % reg_mq)
 
         reg_pn &= mask58_nosign
 
@@ -55,7 +55,7 @@ class g15d_math:
         mask59a = mask59 - 1
 
         if debug:
-            print("divide, instr count=", self.cpu.total_instruction_count)
+            gl.logprint("divide, instr count=", self.cpu.total_instruction_count)
 
         instruction = self.cpu.instruction
         t = instruction['t']
@@ -66,10 +66,10 @@ class g15d_math:
         mq = self.g15.drum.read_two_word(MQ, 0)
 
         if debug:
-            print('pn=%015x' % pn)
-            print('id=%015x' % id)
+            gl.logprint('pn=%015x' % pn)
+            gl.logprint('id=%015x' % id)
             if id == 0:
-                print("Note: attempt to divide by zero")
+                gl.logprint("Note: attempt to divide by zero")
 
         if id == 0:
             idz = 1 << 58
@@ -88,10 +88,10 @@ class g15d_math:
             pn = ((m & mask59a) << 1) & mask59
 
             if debug:
-                print('i=', i)
-                print('pn=%015x' % pn)
-                print('mq=%015x' % mq)
-                print()
+                gl.logprint('i=', i)
+                gl.logprint('pn=%015x' % pn)
+                gl.logprint('mq=%015x' % mq)
+                gl.logprint()
 
         if t & 1:
             mq <<= 1
@@ -100,11 +100,11 @@ class g15d_math:
 
         # divide by 0 in diaper, reveals sign clear if PN result is zero over bits of interest
         if debug:
-            print(" mask58=%015x" % MASK58BIT)
+            gl.logprint(" mask58=%015x" % MASK58BIT)
             iterationmask = (1 << iterations) - 1
-            print("intmask=%015x" % iterationmask)
-            print(" pn>>1=%015x" % (pn >> 1))
-            print("    pn=%015x" % pn)
+            gl.logprint("intmask=%015x" % iterationmask)
+            gl.logprint(" pn>>1=%015x" % (pn >> 1))
+            gl.logprint("    pn=%015x" % pn)
 
         if ((1 << iterations) - 1) & (pn >> 1):      # check t/@ lowest bits if zero
             pn |= 1     # ??? to match Verilog, ttr12_1, instructiont #653, sign bit is affixed.
@@ -117,10 +117,10 @@ class g15d_math:
                 self.cpu.overflow = 1
 
         if debug:
-            print('pn=%015x' % pn)
-            print('id=%015x' % id)
-            print('mq=%015x' % mq)
-            print()
+            gl.logprint('pn=%015x' % pn)
+            gl.logprint('id=%015x' % id)
+            gl.logprint('mq=%015x' % mq)
+            gl.logprint()
 
         self.g15.drum.write_two_word(PN, 0, pn)
         self.g15.drum.write_two_word(ID, 0, id)

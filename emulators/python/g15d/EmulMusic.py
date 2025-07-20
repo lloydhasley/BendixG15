@@ -32,6 +32,7 @@ class EmulMusic:
 	def __init__(self, g15):
 		self.g15 = g15
 		self.cpu = g15.cpu
+		self.emul = self.g15.emul
 
 		self.cur_position = 0
 		self.frequency = 0
@@ -47,9 +48,9 @@ class EmulMusic:
 		self.musicdb = {}
 
 		if music_debug:
-			print("  BIT_TIME: ", BIT_TIME)
-			print(" WORD_TIME: ", WORD_TIME)
-			print("TRACK_TIME: ", TRACK_TIME)
+			gl.logprint("  BIT_TIME: ", BIT_TIME)
+			gl.logprint(" WORD_TIME: ", WORD_TIME)
+			gl.logprint("TRACK_TIME: ", TRACK_TIME)
 
 		self.outstream = None
 
@@ -59,7 +60,7 @@ class EmulMusic:
 
 		if music_include:
 			self.thread_run = True
-			self.t2 = threading.Thread(target=self.play, daemon=True)
+			self.t3 = threading.Thread(target=self.play, daemon=True)
 
 		self.max_variation = 0 		# keep pip8 happy
 
@@ -98,7 +99,7 @@ class EmulMusic:
 				self.outstream = p.open(format=p.get_format_from_width(1), channels=1, rate=FRAMERATE, output=True)
 
 		if music_enable:
-			print("setting music enable")
+			self.log.print("setting music enable")
 			self.music_enable = True
 			self.stream_toplay = []
 
@@ -122,7 +123,7 @@ class EmulMusic:
 			frequency = 0
 
 		if music_debug:
-			print("music s:%02d" % s, " -> d:%02d" % d, ' freq=%6.1f' % frequency, " at time: ", current_time)
+			gl.logprint("music s:%02d" % s, " -> d:%02d" % d, ' freq=%6.1f' % frequency, " at time: ", current_time)
 
 		if d == self.playtrack and stream is not None:
 			self.stream_toplay = stream
@@ -136,10 +137,10 @@ class EmulMusic:
 			retval = self.extract(i)
 			if retval:
 				count += 1
-				print("track: %2d" % i, "%6.1f" % self.musicdb[i]['frequency'], "Hz",
+				gl.logprint("track: %2d" % i, "%6.1f" % self.musicdb[i]['frequency'], "Hz",
 					  " max variation from square: ", self.musicdb[i]['max_variation'])
 			else:
-				print("track: %2d" % i, " not a music track")
+				gl.logprint("track: %2d" % i, " not a music track")
 
 		if count <= 10:
 			self.notdone = 1
@@ -241,9 +242,9 @@ class EmulMusic:
 					tooshort = 1
 
 			if False:
-				print("NO SQUARE WAVE DETECTED on track: ", track)
-				print(" max observed variation: ", max_variation)
-				print(" tooshort: ", tooshort)
+				gl.logprint("NO SQUARE WAVE DETECTED on track: ", track)
+				gl.logprint(" max observed variation: ", max_variation)
+				gl.logprint(" tooshort: ", tooshort)
 				return 0, 0
 
 		# have a square wave
@@ -253,16 +254,9 @@ class EmulMusic:
 
 		return max_variation, frequency
 
-	# currently not used
-	def extract_bits(self, track):
-		if (self.cur_position % 29) == 0:
-			wordaddr = self.cur_position // 29
-			self.word = self.g15.drum.read(track, wordaddr)
-			word, bit = self.position2wordbit(self.word)
-			return word, bit
-
 	@staticmethod
 	def position2wordbit(position):
+	    # takes bit position on drum track and converts to word & bit position
 		bit = position % 29
 		word = position // 29
 		return word, bit

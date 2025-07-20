@@ -13,8 +13,6 @@ iosys.get_status
     wait unitl ptr is fed through to iosys to decide.
     modify cmds.py:verify to use
 
-eliminate qcmd
-
 bkuker
     fractal program results different than in web emulator
 
@@ -47,7 +45,7 @@ TTR12:
     u 38,37,0,28,28  What does this one do.
 
 cpu dc button off
-    should terminate simuations, not just lock sim engine
+    should terminate emulator, not just lock sim engine
 
 typewriter
     add direct G15 command input
@@ -68,6 +66,11 @@ profile code for speedup
 
 replace int(x,0) with a g15 hex equivhhhhhhhhhhhhlent
 
+
+-20 adjust
+    decode has one.  is there another.
+    this one was commented otu, recently uncommented
+
 verbose does not register with cmd interpreter unlike verbosity
 
 cpu has hex converting routine
@@ -84,13 +87,10 @@ cpu children verbosity flags should point back to cpu module
 
 paragraph D61 return exit
     different results with compute sw in go or bp
+    emulator will give same results (go)
 
 need to add a CPU.close() at sim shutdown
     needs to call vtrace logger
-
-really think through lock/unlock.
-    we have commented out many of these.
-    in new structure the handlers are in the secondary clock domain
 
 int(x,0) bombs if given a non-numeric value
     ie user mistypes a user label
@@ -98,6 +98,12 @@ int(x,0) bombs if given a non-numeric value
 add run to halt/typein/typeout + 2 instructions
 		pause
     magtape
+
+replace logger mesg/mesg2 with note level
+
+drum revolution count way too high
+
+use trace flag to enbale or not logger tracing??? or cmd log
 
 enable emulator to be run from any directory
     include needs to check current directory, relative, and then the installation directory
@@ -115,6 +121,9 @@ cmd status looks for status and Status
 	let's consolidate done to one or the other, but not both
 
 debug/test pause command
+
+add OPTION for auto run 150 after s is typed in.
+
 
 === backport to c++ model ++++
 
@@ -141,6 +150,11 @@ Paragraph C-12c
 
 modify log trace output format to match python
 
+start files should be quiet/not outputted
+
+circle-m needs to be qualified by slow-out
+
+Offical Bendix alphabet has CTP P=period
 ==== verilog =====
 
 Python/Verilog differences:

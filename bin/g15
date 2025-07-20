@@ -1,0 +1,17 @@
+#
+# shell script to invoke the various emulators
+#
+EMUL_DEFAULT=python/g15d.py
+EMULATORS=../emulators      # directory relative to this file's location
+
+# determine directory where this script is located
+script_dir=$(dirname "$0")
+
+# where are the emulators
+emulators_dir={$script_dir}/$EMULATORS
+
+# specific emulator
+emulator=$emulators_dir/$EMUL_DEFAULT
+
+echo $emulator $*
+time $emulator $*

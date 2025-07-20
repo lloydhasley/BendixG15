@@ -40,26 +40,24 @@ else:
         def open(self):
             self.fd = sys.stdin.fileno()
             self.old_settings = termios.tcgetattr(self.fd)
-    #        tty.setraw(sys.stdin.fileno())
             tty.setcbreak(sys.stdin.fileno())
 
         def close(self):
             # restore original terminal settings
-            print("Restoring terminal settings")
             termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old_settings)
 
             # above statement does not seem work on MAC
+            # so force it via system call
             os.system("stty sane")
 
         def kbhit(self):
-            rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+            rlist, _, _ = select.select([sys.stdin], [], [], 0.001)
             if rlist:
                 c = sys.stdin.read(1)
 
                 if c == 3:      # control-c
                     self.emul.quit()
 
-#                print(c, end='')
                 return c
             else:
                 return False

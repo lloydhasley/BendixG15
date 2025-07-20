@@ -16,7 +16,7 @@ from G15Subr import *
 from G15Constants import *
 from EmulLogger import *
 from intg15 import intg15
-
+from printg15 import printfg15
 
 PAUSE_CHECK_INTERVAL = 0.005        # default: 5ms
 
@@ -43,18 +43,23 @@ class EmulCmds:
         self.syms = {}                  # macro variables
         self.exit_flag = 0
         self.current_line_buffer = ''       # contents of current command line unparsed
+        self.stack = []                 # commands may initiate other commands
 
         self.cmd_table = [
             ['button <on|off>                         : dc on/off (start/stop)',                self.cmd_button],
             ['dc <on|off>                             : dc on/off (start/stop)',                self.cmd_dc],
-            ['dd <<drum address>                      : display drum',                          self.cmd_dd],
+            ['dd <drum address>                       : display drum',                          self.cmd_dd],
             ["echo [args....]                         : perform basic unix stye echo function", self.cmd_echo],
             ["exit                                    : early exit from an include file",       self.cmd_exit],
             ['help [cmds...]                          ; this help message',                     self.cmd_help],
             ['include <file>                          : execute command in file',               self.cmd_include],
+            ['log <Note|Warning|Error> <on/off>       : enable disable logger levels',          self.cmd_log],
             ['music <on|off>                          : enable music extraction',               self.cmd_music],
             ['patch <addr> <new_value>                : store new_value into addr',             self.cmd_patch],    # to fix binaries
-            ['pause                                   : wait for kybrd input',                  self.cmd_pause],
+            ['pause <num>                             : pause script for N instructions',       self.cmd_pause],
+            ['peek <drum address>                     : display a single word on the drum',     self.cmd_peek],
+            ['poke <drum address> data                : write a word onto the drum',            self.cmd_poke],
+            ['ptp [write <filename>                   : paper tape punch',                      self.cmd_ptp],
             ['ptr [mount <filename>]                  : paper tape reader',                     self.cmd_ptr],
             ['quit                                    : quit the g15d emulator',                self.cmd_quit],
             ['regs                                    : dump regs, M23, part of M19',           self.cmd_regs],
@@ -73,74 +78,56 @@ class EmulCmds:
 
         self.cmd_pause_count = 0
 
-    def start(self, files):
+    def start(self, filenames):
         """
         Start the command interpreter
 
-        :param files:   list of included files to execute at start
+        :param file:   list of included file to execute at start
         :return:        none
         """
-        startlist = []
-        for file_name in files:
-            startlist.append(['include', file_name])
-        startlist.reverse()
-        for item in startlist:
-            self.cmd_include(item)
+        
+        for filename in filenames:
+            self.cmd_include(['include', filename])
 
     def cmd_do_from_processor_loop(self):
-        fin = self.fins[-1]
 
-        if fin == sys.stdin:
-            # get input from terminal via queue
-            if self.emul.getc.q.empty():
-                return      # no stdin input available
-
-            line = self.emul.getc.q.get()
+        if len(self.stack):     # override if another cmd has place cmd onto stack
+            line = self.stack[0]
+            self.stack = self.stack[1:]
 
         else:
-            # get a line from an open file
-            line = self.get_cmd(fin)
+            fin = self.fins[-1]     # last file input
+            if fin == sys.stdin:
+                self.emul.interactive = True
+                
+                # get input from terminal via queue
+                if self.emul.getline.q.empty():
+                    return      # no stdin input available
+    
+                line = self.emul.getline.q.get()
+    
+            else:
+                # get a line from an open file
+                self.emul.interactive = False
+                line = self.get_cmd(fin)
 
         if line is None:
             # file is complete
             if fin != sys.stdin:
                 fin.close()
                 self.fins = self.fins[:-1]
+
+                if len(self.fins) == 1:
+                    self.emul.log.interactive = True
+                
                 return
             else:
-                print("ERROR: attempt to close stdin, ignored")
+                gl.logprint("ERROR: attempt to close stdin, ignored")
                 return
 
         # save the line and execute the command
         self.current_line_buffer = line
         self.process_command(line)
-
-    def cmd_do(self, fin):
-        """
-        Read a command from input (stdin or file) and execute it
-
-        :param fin: file handle to get command from
-        :return:    none
-        """
-        while True:
-            line = None
-            if fin == sys.stdin:
-                if not self.emul.getc.q.empty():
-                    line = self.emul.getc.q.get()
-            else:
-                # we are reading from a file or there is input at the keyboard
-                line = self.get_cmd(fin)
-
-            if line is None:
-                print("ERRROR EMPYT LINE")
-                break
-
-            # save the line and execute the command
-            self.current_line_buffer = line
-            self.process_command(line)
-
-            if self.exit_flag:
-                break
 
     def process_command(self, line):
         """
@@ -149,9 +136,8 @@ class EmulCmds:
         :param line:        # command line
         :return:
         """
-
         if self.verbosity & 1:
-            print('entering process command, line=', line)
+            gl.logprint('entering process command, line=', line)
         if len(line) == 0:
             return
 
@@ -174,10 +160,10 @@ class EmulCmds:
 
         # do we have a match
         if count == 0:
-            print('Error: unknown command: ', args[0])
+            gl.logprint('Error: unknown command: ', args[0])
             return
         elif count > 1:
-            print('Unable to resolve command: ', args[0])
+            gl.logprint('Unable to resolve command: ', args[0])
             return
 
         # have an exact match
@@ -195,7 +181,8 @@ class EmulCmds:
         :param fin:
         :return:
         """
-        self.fout.write(self.prompt)
+#        self.fout.write(self.prompt)
+        self.emul.log.fout.write(self.prompt)
         self.fout.flush()
 
         # get a command
@@ -205,7 +192,7 @@ class EmulCmds:
 
         line = line.strip()
         if fin != sys.stdin:
-            print(line)
+            gl.logprint(line)
 
         return line
 
@@ -216,7 +203,7 @@ class EmulCmds:
 
         for arg in subargs:
             if not arg.isnumeric():
-                print("non numeric digit detect in range specification")
+                gl.logprint("non numeric digit detect in range specification")
                 return None
 
         return subargs
@@ -251,13 +238,11 @@ class EmulCmds:
                     lstr = lstr + ':' + tokens[jj]
 
                 args[ii] = lstr
-
-        for sym, symvalue in self.syms.items():
-            for i in range(len(args)):
-                arg = args[i]
-                arg.replace(sym, symvalue)
-                if sym in arg:
-                    args[i] = arg.replace(sym, symvalue)
+        
+        for i in range(len(args)):
+            if args[i] in self.syms:
+                args[i] = self.syms[args[i]]
+        
         return args
         
     def cmds_pause(self):
@@ -302,7 +287,7 @@ class EmulCmds:
         self.cmd_dd_helper(track, start, stop)
 
     def cmd_dd_helper(self, track, start, stop):
-        print('\ntrack = ', track, 'start=', start, 'stop=', stop)
+        gl.logprint('\ntrack = ', track, 'start=', start, 'stop=', stop)
 
         if track < 0:
             self.help('dd')
@@ -312,7 +297,7 @@ class EmulCmds:
             signmag = self.g15.drum.read(track, wordtime)
             outstr = signmag_to_str(signmag)
 
-            print(' %0d' % track, '%03d' % wordtime, ': ', outstr)
+            gl.logprint(' %0d' % track, '%03d' % wordtime, ': ', outstr)
 
     @staticmethod
     def cmd_echo(args):
@@ -320,7 +305,7 @@ class EmulCmds:
 
         ll = len(args)
         for i in range(ll):
-            print('%3s: ' % i, args[i])
+            gl.logprint('%3s: ' % i, args[i])
 
     def cmd_exit(self, _args):
         """ early exit from an include file """
@@ -341,7 +326,7 @@ class EmulCmds:
 
         for cmd_name, cmd_fcn in self.cmd_table:
             if (cmp_str == cmd_name[:ll]) or allflag:
-                print(cmd_name)
+                gl.logprint(cmd_name)
 
     def cmd_include(self, args):
         """ Read emulator commands from specified include file(s) """
@@ -349,17 +334,30 @@ class EmulCmds:
         if ll > 1:
             filename = args[1]
         else:
-            print(self.help('include'))
+            gl.logprint(self.help('include'))
             return
-
+            
         try:
             fin = open(filename, 'r')
         except IOError:
-            print('Error: Cannot open file: ', filename)
+            gl.logprint('Error: Cannot open file: ', filename)
             return
 
         self.fins.append(fin)
-        # print("fins=", self.fins)
+
+    def cmd_log(self, args):
+        if len(args != 3):
+            self.help('logger')
+            return
+
+        level = args[0]
+        enable = args[1]
+        if enable[0].tolower == 'y' or enable[0].tolower == 'on':
+            enable = True
+        else:
+            enable = False
+
+        self.log_enable(level, enable)
 
     def cmd_music(self, args):
         if len(args) < 2:
@@ -380,18 +378,21 @@ class EmulCmds:
         """ Patch a single hex value into an address """
 
         if len(args) != 3:
-            print ("Usage: patch destaddr new_g15_sexadecimal_value")
+            gl.logprint("Usage: patch destaddr new_g15_sexadecimal_value")
+            self.help("patch")
             return
 
-        patchaddr = int (args[1])
+        track, word = self.parse_colon(args[1])
         patchval = str_to_signmag(args[2])
-        track = int (patchaddr/100)
-        l1 = "{:02d}".format(track)
-        word = patchaddr%100
+
+        if False:
+            patchaddr = int (args[1])
+            patchval = str_to_signmag(args[2])
+            track = int (patchaddr/100)
+            l1 = "{:02d}".format(track)
+            word = patchaddr%100
+
         self.g15.drum.write (track, word, patchval)
-#        for a in range(word - 2, word + 2 + 1):
-#            a1 = "{:02d}".format(a)
-#            print (l1+a1+" = "+signmag_to_str( self.g15.drum.read(track, a)))
         return
 
     def cmd_pause(self, args):
@@ -405,6 +406,32 @@ class EmulCmds:
         self.emul.cmd_pause_count = intg15(args[1], 0)
         return
 
+    def cmd_peek(self, args):
+        """ read a single hex value into an address """
+        if len(args) != 2:
+            gl.logprint("Usage: peek track:wordTime")
+            self.help("peek")
+            return
+
+        track, wordTime = self.parse_colon(args[1])
+        value = self.g15.drum.read(track, wordTime)
+
+        s = sprintg15("peek: track=%d, word=%d, data=0%x", track, wordTime, value)
+        gl.logprint(s)
+        return value
+
+    def cmd_poke(self, args):
+        """ place a single hex value into an address """
+        if len(args) != 3:
+            gl.logprint("Usage: poke track:wordTime value")
+            self.help("poke")
+            return
+
+        track, word = self.parse_colon(args[1])
+        value = str_to_signmag(args[2])
+        self.g15.drum.write(track, word, value)
+        return
+
     def cmd_ptp(self, args):
         """ emulate paper tape punch """
         ptp = self.g15.ptp
@@ -414,7 +441,34 @@ class EmulCmds:
             ptp.status()
             return
 
-
+        # len is at least two
+        tokens = args[1:]
+        ll = len(tokens)
+        if ll == 1:
+            if tokens[0] == 'clear':
+                self.g15.ptp.clear()
+                return
+        if ll == 2:
+            if tokens[0] == 'write':
+                self.g15.ptp.write_file(tokens[1])
+                gl.logprint("Punched paper tape written to file: ", tokens[1])
+                return
+        if ll >= 2:
+            if tokens[0] == 'tracks' or tokens[0] == 'track':            
+                tracks = []
+                for track in tokens[1:]:
+                    if '-' in track:
+                        tokens = track.split('-')
+                        start = int(tokens[0])
+                        end = int(tokens[1])
+                        for i in range(start, end + 1):
+                            tracks.append(i)
+                    else:
+                        tracks.append(int(track))
+                self.g15.ptp.punch_tracks(tracks)
+                    
+        self.help("ptp")
+        return
 
     def cmd_ptr(self, args):
         """
@@ -432,18 +486,18 @@ class EmulCmds:
         ll = len(args)
         if ll <= 1:
             # print current status
-            print('Taped Mounted: ', ptr.TapeName)
-            print('Current Tape Position: Block ', ptr.ReadIndex)
+            gl.logprint('Taped Mounted: ', ptr.TapeName)
+            gl.logprint('Current Tape Position: Block ', ptr.ReadIndex)
             if ptr.NumberTrack:
-                print('First Block is Number Track')
+                gl.logprint('First Block is Number Track')
             else:
-                print('First Block is not number Track')
+                gl.logprint('First Block is not number Track')
             return
 
         cmd = args[1]
         if cmd == 'mount':
             if ll < 3:
-                print("Error: ")
+                gl.logprint("Error: ")
                 return
             ptr.mount_tape(args[2])
             return
@@ -452,7 +506,7 @@ class EmulCmds:
         """ Quit the emulator """
 
         if self.verbosity & 1:
-            print('entering quit')
+            gl.logprint('entering quit')
         self.emul.quit()
 
     def cmd_regs(self, _args):
@@ -466,43 +520,39 @@ class EmulCmds:
         id_s = signmag_to_str(reg_id, str_width=16)
         pn_s = signmag_to_str(reg_pn, str_width=16)
 
-        print("\tAR: ", ar_s)
-        print("\tMQ: ", mq_s)
-        print("\tID: ", id_s)
-        print("\tPN: ", pn_s)
+        gl.logprint("\tAR: ", ar_s)
+        gl.logprint("\tMQ: ", mq_s)
+        gl.logprint("\tID: ", id_s)
+        gl.logprint("\tPN: ", pn_s)
 
         self.cmd_dd_helper(23, 0, 3)
         self.cmd_dd_helper(19, 0, 15)
         self.cmd_dd_helper(19, 100, 107)
 
     def cmd_run(self, args):
-        arg_parser = argparse.ArgumentParser(prog="run")
-        
-        arg_parser.add_argument('-t', dest='trace', action='store_true', default=False)
-        arg_parser.add_argument('iterations', type=int, default=1)
-
         if len(args) <= 1:
             self.help("run")
             return
 
+        arg_parser = argparse.ArgumentParser(prog="run")
+        arg_parser.add_argument('-t', dest='trace', action='store_true', default=False)
+        arg_parser.add_argument('iterations', type=int, default=1)
         cmd_args = arg_parser.parse_args(args[1:])
-        
-        # trace        1
+
         self.g15.cpu.trace_flag = cmd_args.trace
         
-        # print("run, iterations=", cmd_args.iterations)
-
         self.emul.number_instructions_to_execute = cmd_args.iterations
+        self.emul.RUNSTATE = STATE_RUNNING
+
         self.g15.cpu.halt_status = 0  # remove machine from Halt
 
     def cmd_set(self, args):
         """ set macro variables to control emulation  """
-
         # list known macros
         ll = len(args)
         if ll == 1:
             for var, value in self.syms.items():
-                print('%25s:' % var, ' %s' % value)
+                gl.logprint('%25s:' % var, ' %s' % value)
             return
 
         # new variable
@@ -530,7 +580,7 @@ class EmulCmds:
                 blocks.append(str(block_key))
 
         if ll == 1:
-            print('Status is available on the following blocks: ', blocks)
+            gl.logprint('Status is available on the following blocks: ', blocks)
             return
 
         flag = 1
@@ -543,7 +593,7 @@ class EmulCmds:
                 except AttributeError:
                     pass
         if flag:
-            print("Unknown block or block does not have status option: ", args[1])
+            gl.logprint("Unknown block or block does not have status option: ", args[1])
 
         return
         
@@ -551,9 +601,9 @@ class EmulCmds:
         # format: switch <id> <pos>
         ll = len(args)
         if ll == 1:
-            print("sw  enable: ", self.g15.cpu.sw_enable)
-            print("sw    tape: ", self.g15.cpu.sw_tape)
-            print("sw compute: ", self.g15.cpu.sw_compute)
+            gl.logprint("sw  enable: ", self.g15.cpu.sw_enable)
+            gl.logprint("sw    tape: ", self.g15.cpu.sw_tape)
+            gl.logprint("sw compute: ", self.g15.cpu.sw_compute)
             return
         elif ll != 3:
             self.help("switch")
@@ -563,28 +613,25 @@ class EmulCmds:
         value = args[2]
         
         if sw not in sw_mappings:
-            print("sw is unknown: ", sw)
+            gl.logprint("sw is unknown: ", sw)
             known_switches = []
             for sw in sw_mappings:
                 known_switches.append(sw)
-            print("known switches are: ", sw)
+            gl.logprint("known switches are: ", sw)
             self.help("switch")
             return
         
         mapping = sw_mappings[sw]       # allowable switch positions       
         if value not in mapping:
-            print("sw position is unknown: ", value)
+            gl.logprint("sw position is unknown: ", value)
             known_switch_pos = []
             for pos in mapping:
                 known_switch_pos.append(pos)
-            print("known switch positions are: ", known_switch_pos)
+            gl.logprint("known switch positions are: ", known_switch_pos)
             self.help("switch")
             return        
 
-        mesg_type = sw
-        mesg_value = mapping[value]
-        print("moving switch")
-        self.emul.send_mesg(mesg_type, mesg_value)
+        sw_mappings[sw]['handler'](value)
 
     def cmd_system(self, args):
         if len(args) < 2:
@@ -604,8 +651,11 @@ class EmulCmds:
         if len(args) < 1:
             self.help("type")
 
-        # print("type: total_revolutions: ", self.g15.cpu.total_revolutions)
         self.g15.typewriter.type(args[1])
+        gl.logprint("type, iterations=", self.g15.cpu.total_instruction_count)
+
+        if args[1][-1] == 's':
+            self.stack.append("run 1000")
 
     def cmd_verbosity(self, args):
         """ Control the emulator debug verbosity of the various emulator blocks/pieces """
@@ -615,11 +665,12 @@ class EmulCmds:
             'cpu': self.g15.cpu,
             'drum': self.g15.drum,
             'emul': self.emul,
-            'ptr': self.g15.ptr
+            'ptr': self.g15.ptr,
+            'ptp': self.g15.ptp
         }
         if ll == 1:
             for block_name, handle in known_blocks.items():
-                print('%5s' % block_name, ' 0x%02x' % handle.verbosity)
+                gl.logprint('%5s' % block_name, ' 0x%02x' % handle.verbosity)
             return
 
         if ll != 3:
@@ -633,11 +684,11 @@ class EmulCmds:
 
         else:
             self.help("verbosity")
-            print()
+            gl.logprint()
 
-        print('Verbosity flags:')
+        gl.logprint('Verbosity flags:')
         for block, handle in known_blocks.items():
-            print('%4s' % block, ' %04x' % handle.verbosity)
+            gl.logprint('%4s' % block, ' %04x' % handle.verbosity)
 
     def cmd_verify(self, args):
         """
@@ -685,7 +736,7 @@ class EmulCmds:
             if sum_target_signmag != sum_signmag:
                 self.emul.increment_error_count('chksum error: target=' + sum_target_str + ' drum=' + sum_signmag_str)
             else:
-                print('Chksum is correct: ', sum_target_str)
+                gl.logprint('Chksum is correct: ', sum_target_str)
 
             return
 
@@ -700,7 +751,7 @@ class EmulCmds:
             expected_status_str = int_to_str(expected_status)
 
             if expected_status == io_status:
-                print('Correct io status detectec: ', str_io_status)
+                gl.logprint('Correct io status detected: ', str_io_status)
             else:
                 self.emul.increment_error_count('iostatus error: expected=' + expected_status_str +
                                                 ' actual=' + str_io_status)
@@ -736,7 +787,7 @@ class EmulCmds:
                     flag = 0
 
             if flag:
-                print('next instruction address matches: ', args[2])
+                gl.logprint('next instruction address matches: ', args[2])
             else:
                 self.emul.increment_error_count(' next instruction address does not match, expected: ' + args[2] +
                                                 ' was: ' + str(next_instr_address[0]) + ':'
@@ -766,7 +817,7 @@ class EmulCmds:
             flags = (flags << 1) | flag_overflow
 
             if flags == flags_expected:
-                print('correct: flags match')
+                gl.logprint('correct: flags match')
             else:
                 self.emul.increment_error_count(' flags do not match, expected: ' + args[2] +
                                                 ' was: ' + hex(flags))
@@ -783,7 +834,7 @@ class EmulCmds:
             bell_count = self.g15.cpu.bell_count  # number of times that bell has been rung
 
             if bell_count == bell_count_expected:
-                print('correct: bell count matches')
+                gl.logprint('correct: bell count matches')
             else:
                 self.emul.increment_error_count(' bell count does not match, expected: ' + args[2] +
                                                 ' was: ' + hex(bell_count))

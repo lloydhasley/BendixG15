@@ -55,5 +55,6 @@ ptr mount diaper_reel2_lcm.pti
 
 run 80000
 
+status all
 
 quit
