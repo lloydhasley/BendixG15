@@ -7,7 +7,6 @@ Divide
 """
 
 from G15Subr import *
-import G15Cpu
 
 
 # noinspection PyPep8Naming,PyPep8Naming

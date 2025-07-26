@@ -1,0 +1,142 @@
+#!/usr/bin/perl
+
+my $file = shift;
+my $loc = 900;		# start numbering at 0900
+
+my %labels;		# ultimate gets loc value for every label
+
+my $mode;	# 0 = no mode; 1 = instructions; 2 = fixed pt input
+my $curfploc;
+
+# header
+print <<'EOF';
+#####################################
+#
+# script runs intercom
+#
+#####################################
+#
+# bring up the machine
+#
+#####################################
+#verbosity cpu 2048     # ar debug
+
+ptr mount intercom_1000d_dg.pti
+button dc on
+
+# machine is up, NT loaded
+# switch compute go         # run G15 asynchronous to the cmd interface
+# switch compute center
+
+#####################################
+#  note: omit // if in manual mode
+# 50ADDR//ts    # store command starting at ADDR
+# 51ADDR//ts    # store fixed point data at ADDR  (2.37 entered as 2/37ts)
+# 52ADDR//ts    # store floating point data at ADDR (51237ts is equivalent of 2.37)
+# 69ADDR//ts    # start automatic operation
+# 670000//ts    # return to manual control
+# 39CH00ts      # punch CH onto paper tape
+# 55CH00ts      # read paper tape into CH
+# KOPADDR//ts   # obey any command
+#
+# to return to manual mode:
+#  BP <wait steady>, COMPUTE=OFF, EN-scf, GO   (bell should ring)
+###############################################
+
+run 250
+patch 0450 -v43635v
+patch 0442 -00008u0
+
+###############################################
+
+EOF
+
+open (IN, $file) || die "open '$file': $!";
+my $listfile = $file.".lst";
+open (LIST, ">$listfile") || die ">$listfile: $!";
+my $objfile = $file.".o";
+open (OBJ, ">$objfile") || die ">$objfile: $!";
+my $mode = 1;	# 1 = constants 2 = program
+while (<IN>) {
+    chomp;
+    if ($mode == 1) {
+	print LIST "$_\n";
+    }
+    s/#.*//;
+    s/[	 ]*$//;
+    next if /^$/;
+    if (/^[A-Z]+/) {	# label?
+	$labels{$&} = $loc;
+    }
+    s/^[A-Z]+//;
+    next if (/^\s*$/);
+    if (/^[0-9]+:/) {
+	my ($addr, $val) = split (/:\s*/, $_);
+	if ($curfploc != $addr) {
+	    $curfploc = $addr;
+	    $addr = sprintf("%04d", $addr);
+	    print "type 051${addr}//ts\nrun 1000\n";
+	}
+	$val =~ s/\./\//;
+	$val .= '/0' if ($val !~ /\//);
+	print "type ${val}ts\nrun 1000\n";
+	print OBJ "SET $addr = ${val}\n";
+	my $a = sprintf ("%04d", $curfploc);
+	$curfploc += 2;
+	next;
+    }
+    $mode = 2 if (/\d\d\./);
+    $loc++ if (/\d\d\./);
+#    print "$loc: $_";
+}
+close (IN);
+print LIST "\n";
+
+$loc = 900;
+$mode = 1;
+open (IN, $file) || die "open '$file'[2]: $!";
+my $x = sprintf("%04d", $loc);
+print "type 050${x}//ts\nrun 150\n";
+while (<IN>) {
+    chomp;
+    s/^[A-Z]{4}\b/    /;
+    while (/\b[A-Z]{4}\b/) {
+	if (!defined ($labels{$&})) {
+	    die "$&: Undefined symbol\n";
+	} else {
+	    my $t = sprintf ("%04d", $labels{$&});
+	    s/$&/$t/;
+	}
+    }
+    $mode = 2 if (/\d\d\.\d\d\d\d/);
+    next if $mode == 1;
+    my $x = sprintf("%04d", $loc);
+    if (/\d\d\.\d\d\d\d/) {
+        print LIST "$x  $_\n";
+    } else {
+        print LIST "      $_\n";
+    }
+    s/#.*//;
+    if (/^\s*$/) {
+	next;
+    }
+    s/[	 ]*$//;
+##    next if (/^[0-9]+:/);
+    s/\.//g;
+    s/^\s*//;
+    s/^/0/ if (length($_) < 7);
+    print "type ${_}ts\nrun 150\n";
+    my $in = substr($_, 0, 1);
+    my $op = substr($_, 1, 2);
+    my $ad = substr($_, 3, 4);
+    print OBJ "$loc: $in.$op.$ad\n";
+#    $loc++ if (/\d\d\./);
+    $loc++;
+}
+print "status cpu\n";
+print "type 03909u0//ts\nrun 150\n";
+print "status ptp\n";
+print "type 0690900//ts\nrun 300000\n";
+print "quit";
+close (LIST);
+close (OBJ);

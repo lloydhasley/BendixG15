@@ -19,8 +19,6 @@
 #
 #############################################################
 #
-import copy
-import os
 
 
 from G15Subr import *
@@ -31,10 +29,9 @@ VERBOSITY_PTP_DEBUG = 1
 
 
 class G15Ptp:
-    ''' paper tape punch for the g15
-        prints PTI file of the given data
-    '''
-    def __init__(self, g15,Verbosity=0x0):
+    # paper tape punch for the g15
+    # prints PTI file of the given data
+    def __init__(self, g15, Verbosity=0x0):
         self.g15 = g15
         self.verbosity = Verbosity
         
@@ -42,7 +39,7 @@ class G15Ptp:
 
                        #  0123456789uvwxyz
         self.sym2ascii = " -CTSR.W--------0123456789uvwxyz"
-        self.addNewLine = {'S':2, 'R':1, '/':1}
+        self.addNewLine = {'S': 2, 'R': 1, '/': 1}
 
         # paper tape contents
         self.tape_contents = []
@@ -117,5 +114,3 @@ class G15Ptp:
         gl.logprint("Paper Tape Punch:")
         gl.logprint("\tCharacters punched:", self.count())
         gl.logprint("\t\tand waiting in the PtP buffer:")
-
-

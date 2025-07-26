@@ -46,7 +46,7 @@ verbosity_defs = {
         'all': 0xffff,
         'clear': 0
 
-    }
+    },
     'd31': {
         'value': 0,         # current verbosity value
         'loc': self.g15.cpu.cpu_d31,
@@ -56,7 +56,7 @@ verbosity_defs = {
         'd31': 8,
         'all': 0xffff,
         'clear': 0        
-    }
+    },
     'io': {
         'value': 0,         # current verbosity value
         'loc': self.g15.iosys,
@@ -77,7 +77,7 @@ class Verbosity:
     def find_entry(self, block, name):
         # ensure that block and name are both in dict
         if block not in verbosity_defs:
-            self.emul.log.msg("Error: block: ". block, " not found")
+            self.emul.log.msg("Error: block: " + block + " not found")
             return None
         
         blockH = verbosity_defs[block]
@@ -109,19 +109,17 @@ class Verbosity:
             
         blockH['value'] &= ~blockH[name]
         
-    def get_value(self, block, name)
+    def get_value(self, block, name):
         blockH = self.find_entry(block, name)
         if blockH is None:
             return
         
         return blockH['value']
         
-    def print_check(self, block, name)
+    def print_check(self, block, name):
         blockH = self.find_entry(block, name)
         if blockH is None:
             return   
         
-        if blockH['value'] & blockH['name']
-                
-            
-    
+        if blockH['value'] & blockH['name']:
+            print("????")

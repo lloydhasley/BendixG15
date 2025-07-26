@@ -14,7 +14,6 @@ from G15Subr import *
 import gl
 
 
-
 VERBOSITY_DRUMP_CREATE = 1
 VERBOSITY_DRUM_OP = 2
 VERBOSITY_DRUM_PRECESS = 4
@@ -53,7 +52,8 @@ class G15Drum:
         self.revolution_init()
         
     # determine line length
-    def track_length(self, track):
+    @staticmethod
+    def track_length(track):
         """ Determine number of word in specified track """
 
         try:
@@ -64,7 +64,6 @@ class G15Drum:
             
         return length        
 
-        
     def map_address(self, track, word):
         """
         Map track,word into proper word time
@@ -90,8 +89,8 @@ class G15Drum:
 
         if flag and (self.verbosity & VERBOSITY_DRUM_OP):
             gl.logprint('Drum  Read: Track=%02d' % track, ' word=%03d' % word_time,
-                  '  read_data= ', signmag_to_str(read_data),
-                  ' /%08x' % read_data)
+                        '  read_data= ', signmag_to_str(read_data),
+                        ' /%08x' % read_data)
 
         return read_data
 
@@ -106,7 +105,7 @@ class G15Drum:
         if self.verbosity & VERBOSITY_DRUM_OP:
             gl.logprint("Address=", address)
             gl.logprint('Drum Write: Track=%02d' % track, ' word=%03d' % word_time,
-                  ' write_data= ', signmag_to_str(write_data), ' /%08x' % write_data)
+                        ' write_data= ', signmag_to_str(write_data), ' /%08x' % write_data)
 
     def write_block(self, block_id, track, data):
         """

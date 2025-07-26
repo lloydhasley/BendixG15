@@ -47,7 +47,7 @@ class G15TypeNumeric:
             if c == 'm':
                 ARvalue = self.g15.drum.read(AR, 0)
                 self.g15.drum.write(M1, 107, ARvalue)
-                CMvalue = self.g15.drum.read(CM, 0)  # note emulator does use CM
+                CMvalue = self.g15.drum.read(CM, 0)  # note emulator does not use CM
                 CMneg = (~CMvalue) & MASK29BIT
                 self.g15.drum.write(M0, 107, CMneg)
                 continue
@@ -67,9 +67,12 @@ class G15TypeNumeric:
             if c == 'r':
                 ARvalue = self.g15.drum.read(M1, 107)
                 self.g15.drum.write(AR, 0, ARvalue)
-                CMneg = self.g15.drum.read(M1, 107)
+
+                CMvalue = self.g15.drum.read(M0, 107)
                 CMvalue = (~CMvalue) & MASK29BIT
                 self.g15.drum.write(CM, 0, CMvalue)
+
+                # true CM holds WT and nextCmdWT
                 continue
 
             if c == 's':
@@ -83,31 +86,14 @@ class G15TypeNumeric:
                                 
     def write(self, outstr):
         # type on typewriter
-
-        # list(filter(G15_WAIT.__ne__, outstr))
-        # list(filter(G15_RELOAD.__ne__, outstr))
-        # list(filter(G15_STOP.__ne__, outstr))
-
         ascii_str = self.g15.iosys.io_2_ascii(outstr)
-        #self.output_history.append(ascii_str)
-
-        # loading spaces
-#        while True:
-#            if ascii_str[0] == ' ':
-#                ascii_str = ascii_str[1:]
-#            else:
-#                break
 
         # following handles output whose lines span multiple format statements
         if self.g15.bkuker:
             for c in ascii_str:
                 self.out_history[-1] += c
                 if c == '\n':
-# @@@ don't know if this is too much commenting out...RBK
-#                    print("TYPEOUT1: ", self.out_history[-1])
                     self.out_history.append('')
-#            if len(self.out_history[-1]):
-#                print("TYPEOUT2: ", self.out_history[-1])
         else:
             outbuffer = ''
             for c in ascii_str:

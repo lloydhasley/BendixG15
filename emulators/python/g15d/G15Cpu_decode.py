@@ -10,6 +10,7 @@ from G15Subr import *
 import G15Cpu
 import gl
 
+
 # noinspection PyPep8Naming,PyPep8Naming
 class g15d_decode:
     """ g15d instruction decoder and disassembler """
@@ -49,7 +50,7 @@ class g15d_decode:
             20: 'Return',
             21: 'Mark',
             22: 'Test T1*AR',
-            23: {0: 'PG Clear', 3: 'PN*M2->ID, PN*!M2->PN',  'default':'error'},
+            23: {0: 'PG Clear', 3: 'PN*M2->ID, PN*!M2->PN',  'default': 'error'},
             24: 'Multiply',
             25: 'divide (ch=1)',
             26: 'shift',
@@ -60,11 +61,7 @@ class g15d_decode:
             31: 'Next Comm.fm.AR'
         }
 
-        self.MDSN = [24,25,26,27]       # multiply,divide,shift,normalize
-
-        # initialize disassembler
-        self.dissambly_label = "TRK LOC    HEX    P  T  N C  S  D BP    COMMENTS"
-
+        self.MDSN = [24, 25, 26, 27]       # multiply,divide,shift,normalize
 
     #######################################
     #
@@ -155,7 +152,7 @@ class g15d_decode:
         instruction['divide'] = source == 25 and destination == 31
         
         instruction['ts'] = (not instruction['dp']) and (not instruction['divide']) or \
-                (instruction['word_time'] & 1) == 0
+            (instruction['word_time'] & 1) == 0
 
         ch_low = instruction['ch'] & 0x3
         if ch_low == 0:
@@ -187,16 +184,12 @@ class g15d_decode:
             # need to adjust the following.  see drawing 19 once testing shift/mult/div/norm instructions
             elif instruction['s'] == 24 and instruction['d'] == 31:  # Multiply
                 time_end = (instruction["loc"] + instruction["t"]) % 108
-                relative = 1
             elif instruction['s'] == 25 and instruction['d'] == 31:  # Divide
                 time_end = (instruction["loc"] + instruction["t"]) % 108
-                relative = 1
             elif instruction['s'] == 26 and instruction['d'] == 31:  # Shift
                 time_end = (instruction["loc"] + instruction["t"]) % 108
-                relative = 1
             elif instruction['s'] == 27 and instruction['d'] == 31:  # Normalize
                 time_end = (instruction["loc"] + instruction["t"]) % 108
-                relative = 1
             else:
                 # 'regular' instruction
                 time_end = instruction["t"] - 1  # stops one before T
@@ -236,4 +229,3 @@ class g15d_decode:
         instruction['time_end'] = time_end
 
         return time_start, time_end
-

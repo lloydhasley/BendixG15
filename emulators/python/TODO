@@ -66,6 +66,8 @@ profile code for speedup
 
 replace int(x,0) with a g15 hex equivhhhhhhhhhhhhlent
 
+remove logprint level control
+
 
 -20 adjust
     decode has one.  is there another.

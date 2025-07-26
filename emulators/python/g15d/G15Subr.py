@@ -101,9 +101,9 @@ def ascii_2_code(Device, ascii):
     if ascii not in ascii_to_code:
         return -2
 
-    dict = ascii_to_code[ascii]
-    code = dict['code']
-    devices = dict['devices']
+    dict1 = ascii_to_code[ascii]
+    code = dict1['code']
+    devices = dict1['devices']
 
     if Device & devices != 0:
         return code
@@ -112,8 +112,8 @@ def ascii_2_code(Device, ascii):
 
 
 def int_to_str(num):
-    ''' take a signed int and convert to string '''
-
+    # take a signed int and convert to string
+    #
     signmag = int_to_signmag(num)
     ret_str = signmag_to_str(signmag)
     return ret_str
@@ -126,8 +126,8 @@ def invert29(number):
 
 
 def comp2s(number, size):
-    ''' generate two's complement of number '''
-
+    # generate two's complement of number
+    #
     value = (1 << size) - number
     value &= (1 << size) - 1
 
@@ -137,7 +137,7 @@ def comp2s(number, size):
 
 
 def signmag_to_str(signmag, str_width=8):
-    ''' convert sign-mag number to string '''
+    # convert sign-mag number to string
 
     sign = signmag & 1
     mag = signmag >> 1
@@ -152,14 +152,16 @@ def signmag_to_str(signmag, str_width=8):
 
     return ret_str
 
+
 def word_time_rollover(num):
     while num >= 108:
         num = num - 108
     return num
 
-def mag_to_str(num, str_width=8):
-    ''' convert 28bit magnitude number to a string '''
 
+def mag_to_str(num, str_width=8):
+    # convert 28bit magnitude number to a string
+    #
     vstr = ''
     while num:
         str_digit = hex_to_ascii[num % 16]
@@ -167,8 +169,7 @@ def mag_to_str(num, str_width=8):
 
         num >>= 4
 
-    l = len(vstr)
-    pad_length = str_width - l - 1
+    pad_length = str_width - len(vstr) - 1
     if pad_length > 0:
         vstr = STR_PAD[:pad_length] + vstr
 
@@ -176,8 +177,7 @@ def mag_to_str(num, str_width=8):
 
 
 def str_to_signmag(text):
-    l = len(text)
-    if l == 0:
+    if len(text) == 0:
         return 0
 
     # extract sign mag nomenclature
@@ -202,8 +202,8 @@ def str_to_signmag(text):
 
 
 def signmag_to_comp2s_29(signmag):
-    ''' convert sign magnitude to 2s complement '''
-
+    # convert sign magnitude to 2s complement
+    #
     sign = signmag & 1
     mag = signmag >> 1
 
@@ -215,17 +215,21 @@ def signmag_to_comp2s_29(signmag):
 
     return num
 
-def signmag_to_comp2s(signmag):
-    ''' convert sign magnitude to python's 2s complement '''
 
+def signmag_to_comp2s(signmag):
+    # convert sign magnitude to python's 2s complement
+    #
     sign = signmag & 1
     mag = signmag >> 1
-    if sign == 0: return mag
-    return - ( (1<<28) - mag )
+    if sign == 0:
+        return mag
+
+    return - ((1 << 28) - mag)
+
 
 def signmag_to_int(signmag):
-    ''' convert sign magnitude notation to signed int notation '''
-
+    # convert sign magnitude notation to signed int notation
+    #
     sign = signmag & 1
     mag = signmag >> 1
     if sign:
@@ -235,16 +239,18 @@ def signmag_to_int(signmag):
 
     return int
 
+
 def int_plus_int(a, b):
     total = a + b
-    sign = total & (1<<29)
+    sign = total & (1 << 29)
     if sign:
-        total = ((~total) + 1) & ((1<<29) - 1)
+        total = ((~total) + 1) & ((1 << 29) - 1)
         total = -total
 
-    gl.logprint('a=',a, ' b=',b, ' total=',total)
+    gl.logprint('a=', a, ' b=', b, ' total=', total)
 
     return total
+
 
 def signmag_plus_signmag(a, b):
     # total = (a & (MASK29BIT - 1)) + (b & (MASK29BIT - 1))
@@ -260,26 +266,24 @@ def signmag_plus_signmag(a, b):
 
     return total
 
+
 def int_to_signmag(value2s):
-    ''' convert python integer to G-15 sign magnitude '''
+    # convert python integer to G-15 sign magnitude
+
     if value2s >= 0:
-        #if value2s & (1<<28):
-        #    # have rollover
-        #    val = (~value2s) + 1
-        #    sigmag = (val << 1) | 1
-        #else:
-        # positive number
         return value2s << 1
+
     # negative number
     signmag = (-value2s) << 1
-    signmag = (1<<29) - signmag
+    signmag = (1 << 29) - signmag
     signmag |= 1
     signmag &= MASK29BIT
     return signmag
 
+
 def wordtime_to_str(value):
     if value > 116:
-        gl.logprint('INTERNAL ERROR: bad word time specified: ',value)
+        gl.logprint('INTERNAL ERROR: bad word time specified: ', value)
         value = 0
 
     lsd = value % 10
@@ -305,6 +309,7 @@ def str_to_wordtime(text):
 def bits_extract(word, width, offset):
     return (word >> offset) & ((1 << width) - 1)
 
+
 #######################################
 #
 # convert instruction dictionary entry to a printable string
@@ -315,26 +320,21 @@ def bits_extract(word, width, offset):
 # decimal 0-99, then u0-u6 for remainder of range
 #
 def instr_dec_hex_convert(number):
+    FirstDigit = int(number / 10)
+    SecondDigit = number % 10
     #
-#    if number > 116:  # beyond range of S/D
-#        return "ER"
-#    else:
-        FirstDigit = int(number / 10)
-        SecondDigit = number % 10
-        #
-        return hex_to_ascii[FirstDigit] + hex_to_ascii[SecondDigit]
+    return hex_to_ascii[FirstDigit] + hex_to_ascii[SecondDigit]
 
 
 def instr_2_hex_string(instr):
-    '''
-    convert the binary encoded instruction value
-    :param encoded:
-    :return:
-
-    converted the binary encoded instruction value
-    to G15 SIGNED hex
-
-    '''
+    #
+    # convert the binary encoded instruction value
+    # param encoded:
+    # return:
+    #
+    # converted the binary encoded instruction value
+    # to G15 SIGNED hex
+    #
     # extract sign bit (LSB)
     if instr & 1:
         out_str = '-'
@@ -356,4 +356,3 @@ def print_list_hex(label, values):
         outstr += num_str
     outstr += ']'
     gl.logprint(outstr)
-

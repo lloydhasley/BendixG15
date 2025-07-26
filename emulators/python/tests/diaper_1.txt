@@ -13,6 +13,7 @@ switch enable off
 switch tape off
 switch compute off      # note compute or run, do not use both
 
+log on
 
 #####################################
 #

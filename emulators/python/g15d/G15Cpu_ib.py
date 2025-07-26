@@ -1,5 +1,5 @@
 """
-G15D Intermeidate Bus implementation
+G15D intermediate Bus implementation
 """
 
 
@@ -76,9 +76,9 @@ class g15d_ib:
                 self.cpu.flop_ip = 0
 
             ip_double_to_not_double = self.cpu.flop_ip and \
-                                      (instruction['d'] not in two_word_tracks) and \
-                                      (instruction['d'] != D_TEST)  and \
-                                       ip_block_s
+                (instruction['d'] not in two_word_tracks) and \
+                (instruction['d'] != D_TEST) and \
+                ip_block_s
 
             ip_sign_insert = ip_pn_tr_pn_IP or ip_double_to_not_double
 
@@ -95,7 +95,6 @@ class g15d_ib:
             self.cpu.flop_ic = 0
             if self.cpu.flop_is and intermediate_bus != 0:
                 self.cpu.flop_ic = 1
-                
 
             new_sign_bit = sign_bit and (not ip_sign_block) and (not sp_block_sign)
             new_sign_bit = new_sign_bit or sp_insert_sign or ip_pn_tr_pn_IP or ip_sign_insert
@@ -109,7 +108,7 @@ class g15d_ib:
             self.old_early_bus = early_bus
 
         else:
-            # have a double precission, odd word time
+            # have a double precession, odd word time
             if self.cpu.flop_is:
                 # need to invert
                 intermediate_bus = (~early_bus) & MASK29BIT

@@ -10,37 +10,44 @@
 import os
 
 if os.name == 'nt':
-    #Windows Version
+    # Windows Version
     import msvcrt
-    class EmulAscii():
+
+    class EmulAscii:
         def __init__(self, emul):
             self.emul = emul
             self.open()
+
         def open(self):
             return
+
         def close(self):
             return
-        def kbhit(self):
+
+        @staticmethod
+        def kbhit():
             if msvcrt.kbhit():
                 return msvcrt.getch().decode('ASCII')
             return False
             
 else:
-    #Linux Version
+    # Linux Version
     import select
     import sys
     import termios
     import tty
 
-    class EmulAscii():
+    class EmulAscii:
         def __init__(self, emul):
             self.emul = emul
-            self.open()
+            self.old_settings = None
+            self.fd = self.open()
 
         def open(self):
-            self.fd = sys.stdin.fileno()
-            self.old_settings = termios.tcgetattr(self.fd)
+            fd = sys.stdin.fileno()
+            self.old_settings = termios.tcgetattr(fd)
             tty.setcbreak(sys.stdin.fileno())
+            return fd
 
         def close(self):
             # restore original terminal settings
@@ -61,4 +68,3 @@ else:
                 return c
             else:
                 return False
-

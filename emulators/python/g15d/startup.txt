@@ -1,7 +1,6 @@
-
+silent  on
 #
 # load emulator with common constants
-#include g15d/constants.txt
 include constants.txt
 
 verbosity drum 0
@@ -12,4 +11,3 @@ switch enable off
 switch tape off
 switch compute off      # note compute or run, do not use both
 
-logger trace            # enable trace (should move to user control?)

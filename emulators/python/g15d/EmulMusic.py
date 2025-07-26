@@ -10,6 +10,7 @@
 import pyaudio
 import threading
 import time
+import gl
 
 from G15Constants import *
 
@@ -99,13 +100,15 @@ class EmulMusic:
 				self.outstream = p.open(format=p.get_format_from_width(1), channels=1, rate=FRAMERATE, output=True)
 
 		if music_enable:
-			self.log.print("setting music enable")
+			gl.logprint("setting music enable")
 			self.music_enable = True
 			self.stream_toplay = []
 
 	def trackcopy(self, instruction):
 		# we have a track copy instruction execution into a possible music track (2,3,19)
 		#
+		stream = None
+
 		current_time = self.g15.drum.time_get_str()
 		d = instruction['d']
 		s = instruction['s']
@@ -138,7 +141,7 @@ class EmulMusic:
 			if retval:
 				count += 1
 				gl.logprint("track: %2d" % i, "%6.1f" % self.musicdb[i]['frequency'], "Hz",
-					  " max variation from square: ", self.musicdb[i]['max_variation'])
+							" max variation from square: ", self.musicdb[i]['max_variation'])
 			else:
 				gl.logprint("track: %2d" % i, " not a music track")
 
@@ -241,12 +244,6 @@ class EmulMusic:
 				if run_length < MIN_RUN_LEN:
 					tooshort = 1
 
-			if False:
-				gl.logprint("NO SQUARE WAVE DETECTED on track: ", track)
-				gl.logprint(" max observed variation: ", max_variation)
-				gl.logprint(" tooshort: ", tooshort)
-				return 0, 0
-
 		# have a square wave
 		period_length = average_length[0] + average_length[1]
 		period = period_length * BIT_TIME		# in uS
@@ -256,7 +253,7 @@ class EmulMusic:
 
 	@staticmethod
 	def position2wordbit(position):
-	    # takes bit position on drum track and converts to word & bit position
+		# takes bit position on drum track and converts to word & bit position
 		bit = position % 29
 		word = position // 29
 		return word, bit

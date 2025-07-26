@@ -17,9 +17,8 @@ Futures:
    paper tape punch is not modelled, but planned
    magnetic tape is not modelled, but planned
 """
-MUSIC=False
+MUSIC = False     # default is no music processing
 
-import queue
 import threading
 from time import sleep
 import signal
@@ -58,11 +57,9 @@ class Emulator:
                 self.startfiles.append(scriptfile)
        
         # build emulation
-        print('hello')
         self.log = EmulLogger.EmulLogger(self, args.logfile)
         self.interactive = True    # if interactive, prints to both log and screen
-        print("xyzzy")
-        
+
         gl.logprint('Welcome to the BendixG15 python emulator, version: ' + args.version + '\n')
 
         gl.logprint('Note:', 'Loading configuration: ', self.configuration)
@@ -174,10 +171,8 @@ class Emulator:
         self.getline.close()        # graceful shutdown host io subsystem
 
         # last thing to do during shutdown is close the logfile
-        if args.logfile:
-            # close the logfile
-            sys.stdout.close()
-            
+        self.log.close()
+
         sys.exit(0)
 
     def increment_error_count(self, mesg):

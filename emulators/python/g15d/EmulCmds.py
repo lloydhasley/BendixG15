@@ -12,11 +12,9 @@ import argparse
 import os
 
 
-from G15Subr import *
-from G15Constants import *
 from EmulLogger import *
 from intg15 import intg15
-from printg15 import printfg15
+from printg15 import sprintfg15
 
 PAUSE_CHECK_INTERVAL = 0.005        # default: 5ms
 
@@ -82,7 +80,7 @@ class EmulCmds:
         """
         Start the command interpreter
 
-        :param file:   list of included file to execute at start
+        :param filenames:   list of included file to execute at start
         :return:        none
         """
         
@@ -90,12 +88,16 @@ class EmulCmds:
             self.cmd_include(['include', filename])
 
     def cmd_do_from_processor_loop(self):
+        line = None
+        fin = None
 
+        # attempt to get line from stack
         if len(self.stack):     # override if another cmd has place cmd onto stack
             line = self.stack[0]
             self.stack = self.stack[1:]
 
-        else:
+        # if no line from stack, attempt to get from file
+        if line is None:
             fin = self.fins[-1]     # last file input
             if fin == sys.stdin:
                 self.emul.interactive = True
@@ -111,9 +113,13 @@ class EmulCmds:
                 self.emul.interactive = False
                 line = self.get_cmd(fin)
 
+        # no line from stack or file; must be done with file
         if line is None:
-            # file is complete
-            if fin != sys.stdin:
+            # file is complete; check that data path is really from file
+            if fin is None:
+                print("Internal Error: tried to close file but no file open")
+                sys.exit(1)
+            elif fin != sys.stdin:
                 fin.close()
                 self.fins = self.fins[:-1]
 
@@ -346,18 +352,16 @@ class EmulCmds:
         self.fins.append(fin)
 
     def cmd_log(self, args):
-        if len(args != 3):
+        if len(args) != 3:
             self.help('logger')
             return
 
-        level = args[0]
-        enable = args[1]
+        enable = args[0]
         if enable[0].tolower == 'y' or enable[0].tolower == 'on':
             enable = True
         else:
             enable = False
-
-        self.log_enable(level, enable)
+        self.emul.log.enable(enable)
 
     def cmd_music(self, args):
         if len(args) < 2:
@@ -384,15 +388,8 @@ class EmulCmds:
 
         track, word = self.parse_colon(args[1])
         patchval = str_to_signmag(args[2])
-
-        if False:
-            patchaddr = int (args[1])
-            patchval = str_to_signmag(args[2])
-            track = int (patchaddr/100)
-            l1 = "{:02d}".format(track)
-            word = patchaddr%100
-
         self.g15.drum.write (track, word, patchval)
+
         return
 
     def cmd_pause(self, args):
@@ -416,7 +413,7 @@ class EmulCmds:
         track, wordTime = self.parse_colon(args[1])
         value = self.g15.drum.read(track, wordTime)
 
-        s = sprintg15("peek: track=%d, word=%d, data=0%x", track, wordTime, value)
+        s = sprintfg15("peek: track=%d, word=%d, data=0%x", track, wordTime, value)
         gl.logprint(s)
         return value
 
@@ -480,7 +477,6 @@ class EmulCmds:
         :param args:
         :return:
         """
-
         ptr = self.g15.ptr
 
         ll = len(args)

@@ -32,7 +32,6 @@ class EmulGetLine:
     def thread_getline(self):
         # gets a line from stdin
         # runs in the foreground thread
-
         self.buffer = ""
         while True:
             while True:
@@ -66,9 +65,10 @@ class EmulGetLine:
                 self.q.put(self.buffer)
                 self.buffer = ""
                 continue
-    
-    def get_line():
-        if len(self.q):
-            return self.q.pop()
-        return None
-    
+
+    # not used
+    def get_line(self):
+        if self.q.empty():
+            return None
+
+        return self.q.get()

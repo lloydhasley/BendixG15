@@ -8,8 +8,8 @@
 #
 import sys
 
+from G15Constants import *
 from G15Subr import *
-from printg15 import printfg15
 import gl
 
 MAXIODEVICES = 16
@@ -42,6 +42,7 @@ class G15Io:
         self.words_to_print = 0
         self.os = 0     # sign flag
         self.punch_flag = 0
+        self.zero_suppress = 0
 
         self.format_i = 0       # pep8 happiness
 
@@ -109,7 +110,7 @@ class G15Io:
         for data in in_data:
             if self.verbosity & VERBOSITY_IO_DETAIL:
                 gl.logprint("slowin: data=%x" % data, " instr=", self.g15.cpu.total_instruction_count,
-                      '\t[', code_to_ascii[data]['ascii'], ']')
+                            '\t[', code_to_ascii[data]['ascii'], ']')
 
             if self.verbosity & VERBOSITY_IO_DETAIL:
                 gl.logprint('m23 data = ', mag_to_str(data))
@@ -264,12 +265,11 @@ class G15Io:
         # is slow out active?
 
         end_flag = 0
-        xlate = [						# @@@
-#                      '_', '-', 'N', 'T', 'E', '/', '.', 'W',	# @@@
-                      '_', '-', 'C', 'T', 'S', '/', '.', 'W',	# @@@
-                      '@', '@', '@', '@', '@', '@', '@', '@',	# @@@
-                      '0', '1', '2', '3', '4', '5', '6', '7',	# @@@
-                      '8', '9', 'u', 'v', 'w', 'x', 'y', 'z']	# @@@
+        xlate = [
+              '_', '-', 'C', 'T', 'S', '/', '.', 'W',
+              '@', '@', '@', '@', '@', '@', '@', '@',
+              '0', '1', '2', '3', '4', '5', '6', '7',
+              '8', '9', 'u', 'v', 'w', 'x', 'y', 'z']
 
         if self.slow_out_count == 0:
             return
@@ -339,10 +339,10 @@ class G15Io:
                 nibble = (data >> 25) & 0xf         # bits 24-27 (bit 28 has sign bit
                 if self.zero_suppress and nibble == 0 and not self.punch_flag:
                     self.outstr.append(G15_SPACE)
-                    print(" ", end='');				# @@@ actual output
+                    print(" ", end='')
                 else:
                     self.outstr.append(G15_DIGIT | nibble)
-                    print (xlate[G15_DIGIT|nibble], end='')		# @@@ actual output
+                    print(xlate[G15_DIGIT | nibble], end='')
                     if self.punch_flag:
                         self.g15.ptp.punch(self.outstr)
                     #
@@ -354,22 +354,22 @@ class G15Io:
                 # fail if not.
                 if self.os:
                     self.outstr.append(G15_MINUS)
-                    print ("-", end='');				# @@@ actual output
+                    print("-", end='')
                 else:
                     self.outstr.append(G15_SPACE)
-                    print (" ", end='');				# @@@ actual output
+                    print(" ", end='')
 
             elif format_code == FORMAT_CR:
                 self.outstr.append(G15_CR)
                 self.zero_suppress = self.enable_zero_suppress
                 self.g15.drum.precess(self.data_track, 1)
-                print ("");		# newline			# @@@@
+                print("")
 
             elif format_code == FORMAT_TAB:
                 self.outstr.append(G15_TAB)
                 self.zero_suppress = self.enable_zero_suppress
                 self.g15.drum.precess(self.data_track, 1)
-                print ("	", end='');	# tab			# @@@@
+                print("	", end='')
 
             elif format_code == FORMAT_STOP:
                 # if M19, check if empty
@@ -414,10 +414,9 @@ class G15Io:
             elif format_code == FORMAT_PERIOD:
                 self.outstr.append(G15_PERIOD)
                 self.zero_suppress = 0
-                print (".", end='')						# @@@
-
+                print(".", end='')
             else:
-                gl.logprint('[Error:Unknown output format code: ', format, ']')	# @@@ 
+                gl.logprint('[Error:Unknown output format code: ', format, ']')
                 self.g15.cpu.unknown_instruction_count += 1
 
         if self.slow_out_count == 3:
@@ -476,6 +475,7 @@ class G15Io:
         self.slow_out_count = 1
             
         return
+
     #
     # convert G15 io tape codes to typewriter outputs
     #   includes ASCII conversionsts

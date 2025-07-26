@@ -15,14 +15,10 @@ pg15_flush = False
 pg15_buffer = []
 
 
-def putcg15(ch):
-    global pg15_buffer
-
-    pg15_buffer.append(ch)
-
-
 def printg15_int(value, base, sign):
     # set value to absolute value
+    global pg15_buffer
+
     neg = 0
     if sign and value < 0:
         neg = 1
@@ -36,7 +32,7 @@ def printg15_int(value, base, sign):
         buffer.append('-')
     
     for c in buffer:
-        putcg15(c)
+        pg15_buffer.append(c)
 
 
 def printfg15(*args):
@@ -65,38 +61,23 @@ def printfg15(*args):
         else:
             args1.append(arg)
 
-    buffer = sprintg15(args1)
+    buffer = sprintfg15(args1)
     print(buffer, found_keywords)
-    
-#    pg15_file = sys.stdout
-#    if file != sys.stdout:
-#        pg15_file = open("pg15_file", "a")
-        
-#    pg15_file.write(buffer)
-    
-#    if pg15_flush:
-#        pg15_file.flush()    
 
-#    pg15_file = file
-#    if isinstance(flush, str):
-#        if flush == "True":
-#            pg15_file = True
-#        else:
-#            pg15_file = False
-#    else:
-#        pg15_flush = flush
         
 def sprintfg15(*args):
     # args1 is now list of arguments minus the keywords
-    fmt = args1[0]
-    args1 = args1[1:]
+    global pg15_buffer
+
+    fmt = args[0]
+    args1 = args[1:]
     state = 0
     for c in fmt:  # traverse format string
         if state == 0:
             if c == '%':
                 state = '%'
             else:
-                putcg15(c)
+                pg15_buffer.append(c)
             continue
         elif state == '%':
             if c == 'd':
@@ -107,22 +88,23 @@ def sprintfg15(*args):
                 args1 = args1[1:]
             elif c == 's':
                 for ch in args1[0]:
-                    putcg15(ch)
+                    pg15_buffer.append(ch)
                 args1 = args1[1:]
         elif c == 'c':
-            putcg15(args1[0][0])
+            pg15_buffer.append(args1[0][0])
             args1 = args1[1:]
         elif c == '%':
-            putcg15(c)
+            pg15_buffer.append(c)
         else:
             print("Err: Unknown format: ", fmt)
         state = 0
 
-    for c in end:
-        putcg15(c)
+#    for c in end:
+#        putcg15(c)
     
     buffer = "".join(pg15_buffer)
     return buffer
+
 
 # equivalent int but uses g15 hex char
 # and does not bomb w illegal char, instead stops processing

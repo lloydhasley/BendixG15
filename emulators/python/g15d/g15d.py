@@ -6,20 +6,26 @@ import argparse
 import sys
 import os
 
-EMULATOR_VERSION='v1.0.0'
+import Emul
 
-# sys.path.insert(0,'./g15d')
-sys.path.insert(0,'.')
+EMULATOR_VERSION = 'v1.0.1'
+
+sys.path.insert(0, '.')
 sys.dont_write_bytecode = 1
 
 
-argpath = os.path.realpath(__file__)
-dir = os.path.dirname(argpath)
-dir1 = os.path.dirname(dir)
-testdir = dir1 + '/tests'
+argpath = os.path.realpath(__file__)        # main/this file
+dir1 = os.path.dirname(argpath)             # g15 directory
+dirt = os.path.dirname(dir1)                # python directory
+testdir = dirt + '/tests'
 
 
-import Emul
+# determine search path for include files
+def determine_include_search_path():
+    curdir = os.path.realpath(os.getcwd())
+    scriptdir = os.path.realpath(os.path.dirname(__file__))
+    search_path = [curdir, scriptdir]
+    return search_path
 
 
 # search upward for specified directory (dir1) then down for dir2
@@ -31,7 +37,7 @@ def find_tapedir(seed, dir1, dir2):
         tdir = edir + '/' + dir1
         if os.path.isdir(tdir):
             # have the directory
-            # insure that it has 'images' inside of it
+            # ensure that it has 'images' inside of it
             t1dir = tdir + '/' + dir2
             if os.path.isdir(t1dir):
                 # we have the tapes/images directory that we want!!!! :)
@@ -41,10 +47,12 @@ def find_tapedir(seed, dir1, dir2):
 
 
 def main():
-    file_startup = dir + '/startup.txt'
+    file_startup = dir1 + '/startup.txt'             # in source code directory
     configuration = 'numeric'
+    searchpath = determine_include_search_path()
 
     arg_parser = argparse.ArgumentParser(description='A Bendix G-15 emulator')
+    arg_parser.add_argument('-p', '--searchpath', action='append', default=searchpath)
     arg_parser.add_argument('-s', '--startfile', action='append', default=file_startup)
     arg_parser.add_argument('-l', '--logfile', default=None)
     arg_parser.add_argument('-t', '--traceenable', action='store_true', default=False)
@@ -65,11 +73,9 @@ def main():
         if tdir is None:
             tdir = '.'      # let's hope program tape is in current directroy
         args.tapedir = tdir
-        print("lcoated tapedir=", tdir)
 
     # add version label to the argument list
     args.version = EMULATOR_VERSION
-
 
     Emul.Emulator(args)
 

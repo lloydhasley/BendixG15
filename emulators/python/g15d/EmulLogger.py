@@ -6,32 +6,28 @@ note: file start was the waveform comparison point
 but has become a general debug file
 """
 
-import sys
-
 from G15Subr import *
 from printg15 import *
 import gl
+
 
 # noinspection PyPep8Naming
 class EmulLogger:
     """ emulation logger """
     def __init__(self, emul, filename):
-        global logprint
-        
         self.emul = emul
         self.cpu = None     # comes later
         self.g15 = None     # comes later
         self.fout = sys.stdout
         self.fout_count = 0         # number of output lines
         self.io_active_count = 0    # we will suppress output on repeat test ready
-        
-        self.msg_type_enables = {'note':False, 'warning':True, 'error':True, 'trace':True}
+        self.enabled = True
+
         gl.setlogprint(self.print)
 
         if filename is not None:
             try:
                 self.fout = open(filename, "w")
-#                gl.logprint('Trace file opened: ', filename)
                 self.trace_enable = True
             except IOError:
                 print('Error, Cannot open trace file: ', filename)
@@ -51,51 +47,25 @@ class EmulLogger:
             self.fout.close()
             
     def print(self, *args):
-        print(*args, file=self.fout)    # print to logfile
-        if self.emul.interactive and self.fout != sys.stdout:
-            print(*args)                # optionally print to stdout
-                    
-    def get_dict_key(self, type):
-        key_desired = type[0]
-        for key, state in self.msg_type_enables.items():
-            if key[0] == key_desired:
-                return key
+        if self.enabled:
+            print(*args, file=self.fout)    # print to logfile
+            if self.emul.interactive and self.fout != sys.stdout:
+                print(*args)                # optionally print to stdout
 
-        print("Error: Unknown message filter key")
+    def log_enable(self, newstate):
+        self.enabled = newstate
 
-    def log_enable(self, type, cmd):
-        key = self.get_dict_key(type)
-        self.msg_type_enables[key] = cmd
-
-    def determine_if_print_level_enabled(self, type):
-        key = self.get_dict_key(type)
-        state = self.msg_type_enables[key]
-        return state
-
-    def log_print(self, type, msg, EOL=True):
-        if not self.determine_if_print_level_enabled(type):
-            return
-
-        if type == 'Trace':
-            return
-
-        if EOL:
-            eol_str = "\n"
-        else:
-            eol_str = ''
-
-        print(type,': ', msg, file=self.fout, end=eol_str)
-
-    def msg(self, message):
-        print(message, file=self.fout)
+    def msg(self, message, end='\n'):
+        if self.enabled:
+            print(message, file=self.fout, end=end)
 
     def msg2(self, message):
-        print(message, file=self.fout, end="")
+        self.msg(message, end="")
 
     # primary job of logger is to display internal status of the g15
     # in a format comparable with other simulation/emulators of the g15
     def logger(self, time_start, time_end, early_bus, intermediate_bus, late_bus):
-        if not self.determine_if_print_level_enabled('t'):
+        if not self.enabled:
             return
 
         # determine if we are idling waiting for IO complete
@@ -108,8 +78,6 @@ class EmulLogger:
             self.io_active_count += 1
 
         status_str = "%8s" % io_status_str[self.g15.iosys.status]
-
-        instruction = self.cpu.instruction
 
         str1 = "%7d" % self.cpu.total_instruction_count
         str2 = instr_dec_hex_convert(instruction['loc'])
@@ -150,7 +118,7 @@ class EmulLogger:
         else:
             str14 = '   '
 
-        lstr2 = str8 + "." + str9 + "." + str10 + "." + str11 + "." + str12 + "." + str13  + str14 + ":"
+        lstr2 = str8 + "." + str9 + "." + str10 + "." + str11 + "." + str12 + "." + str13 + str14 + ":"
 
         ar = self.g15.drum.read(AR, 0, 0)
         reg_pn = (self.g15.drum.read(PN, 1, 0) << 29) | self.g15.drum.read(PN, 0, 0)
@@ -193,4 +161,3 @@ class EmulLogger:
             self.fout.flush()
 
             self.fout_count += 1
-

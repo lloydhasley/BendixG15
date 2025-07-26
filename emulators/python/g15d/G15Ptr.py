@@ -28,8 +28,7 @@ VERBOSITY_PT_PARSE = 4
 
 
 class G15Ptr:
-    ''' paper tape reader for the g15
-    '''
+    # paper tape reader for the g15
     def __init__(self, g15, tapedir=None, Verbosity=0x2):
         self.g15 = g15
         self.emul = g15.emul
@@ -43,8 +42,10 @@ class G15Ptr:
         self.read_index = 0		# next block ID to "read" into emulator
         self.suffixes = ['', '.pt', '.pti', '.ptr']
         self.tape_paths = self.searchForTapesDirectory(tapedir)
+        self.file_name = ""
 
-        gl.logprint("tape-path=", self.tape_paths)
+        if self.verbosity & 1:
+            gl.logprint("tape-path=", self.tape_paths)
 
         # create empty tape image
         self.tape_parsed = []			# will hold parsed blocks
@@ -67,18 +68,18 @@ class G15Ptr:
         tape_paths.append(sdir)         # executable directory
 
         # search upward looking for "tapes" directory
-        dir = os.path.dirname(sdir)
+        ssdir = os.path.dirname(sdir)
         while True:
-            tdir = dir + '/' + self.tape_dirname
+            tdir = ssdir + '/' + self.tape_dirname
             if os.path.exists(tdir):
-                tape_paths.append(tdir + '/images') # found it
+                tape_paths.append(tdir + '/images')     # found it
                 break
-            dir = os.path.dirname(dir)
-            if dir == '/':      # all done
+            ssdir = os.path.dirname(ssdir)
+            if ssdir == '/':      # all done
                 # no tapes directory dir tree
                 break
 
-        return(tape_paths)
+        return tape_paths
 
     def insure_NT(self):
         if len(self.tape_parsed) == 0:
@@ -96,19 +97,20 @@ class G15Ptr:
             self.tape_parsed = new_tape
 
     def mount_tape(self, file_name):
-        ''' mounts a 'tape onto the papertape reader'
+        # mounts a 'tape onto the papertape reader'
+        #
+        #   specified file is read and its contents are extracted
+        #   a 2D list is created:  tape[blockIndex][WordIndex]
+        #
+        #   to permit dynamic bit transposition, an entire byte image
+        #   is created and then manipulated.  If change to static is
+        #   made, then byte image may be skipped
+        #
+        # param file_name:		file_name containing tape image
+        # return:
+        #
+        self.file_name = file_name
 
-            specified file is read and its contents are extracted
-            a 2D list is created:  tape[blockIndex][WordIndex]
-
-            to permit dynamic bit transposition, an entire byte image
-            is created and then manipulated.  If change to static is
-            made, then byte image may be skipped
-
-        :param file_name:		file_name containing tape image
-        :return:
-
-        '''
         if self.verbosity & VERBOSITY_PT_MOUNT:
             gl.logprint("Reading tape Image: ", file_name)
 
@@ -123,18 +125,20 @@ class G15Ptr:
             file_names.append(file_name)
         else:
             # develop paths
-            for dir in self.tape_paths:
+            for sdir in self.tape_paths:
                 for suffix in self.suffixes:
-                    filename = dir + '/' + file_name + suffix
+                    filename = sdir + '/' + file_name + suffix
                     file_names.append(filename)
 
         # filenames is a list of possible filenames
         # note: if user fname begins with / it is assumed to be complete path
 
         flag = 0
+        FileP = None
         for file_name in file_names:
             if self.verbosity & 1:
-                gl.logprint('Trying to open file: ', self.file_name)
+                gl.logprint('Trying to open file: ', file_name)
+
             try:
                 FileP = open(file_name, 'rb')
                 flag = 1
@@ -199,8 +203,8 @@ class G15Ptr:
         # determine active index intro tape contents lists
         self.read_index = 0
 
-    def checksum2(self, block):
-
+    @staticmethod
+    def checksum2(block):
         checksum = 0
         for word in block:
             value = word >> 1
@@ -218,16 +222,16 @@ class G15Ptr:
         return chksum2  # sign/mag
 
     def parse_tape(self, tape_contents):
-        ''' process tape contents
-        :param self:
-        :param tape_contents:
-        :return:
-
-        converts entire tape image by a byte stream into
-        tape[block][WordAddress]
-
-        not a user routine, called by mount_tape
-        '''
+        # process tape contents
+        # param self:
+        # param tape_contents:
+        # return:
+        #
+        # converts entire tape image by a byte stream into
+        # tape[block][WordAddress]
+        #
+        # not a user routine, called by mount_tape
+        #
         if self.verbosity & VERBOSITY_PT_PARSE:
             gl.logprint('Entering Parse Tape')
 
@@ -245,7 +249,7 @@ class G15Ptr:
         for byte in tape_contents:
             if byte == 0:		# space
                 continue
-            elif byte >= 0x10 and byte <= 0x1f:
+            elif 0x10 <= byte <= 0x1f:
                 block_bytes.append(byte - 0x10)
                 count_bytes += 1
             elif byte == 0x1:
@@ -282,7 +286,7 @@ class G15Ptr:
                     gl.logprint("# of bytes: ", count_bytes)
                     gl.logprint("# Xfers=", count_xfers)
 
-                if block_bytes != []:
+                if block_bytes:
                     quad_word = self.extract_four_words(block_bytes)
                     block_bytes = []
 
@@ -329,17 +333,17 @@ class G15Ptr:
 
         return tape
 
-    def extract_four_words(self, bytes):
-        ''' extract four words (short line) from tape
-        :param self:
-        :param bytes:
-        :return:
-
-        returns 4 entry list
-
-        note: not a user routine, called by parse_tape
-        '''
-        byte_count = len(bytes)
+    def extract_four_words(self, bytes_lst):
+        # extract four words (short line) from tape
+        # param self:
+        # param bytes:
+        # return:
+        #
+        # returns 4 entry list
+        #
+        # note: not a user routine, called by parse_tape
+        #
+        byte_count = len(bytes_lst)
         if byte_count != 29:
             gl.logprint("Error: Current conversion program requires 29 byte (ie full) blocks")
 
@@ -348,7 +352,7 @@ class G15Ptr:
         bit_count = 0
         words = []
 
-        for byte in bytes:
+        for byte in bytes_lst:
             # bring in the byte
             # previous data is MSB over newer data
             if self.verbosity & VERBOSITY_PT_PARSE:
@@ -378,24 +382,25 @@ class G15Ptr:
             gl.logprint("bytes were: ", bytes)
         return words
 
-    def pti_remove_comments(self, image):
+    @staticmethod
+    def pti_remove_comments(image):
         newimage = []
         eat = 0
         for c in image:
             # if c == '#':
             if c == 0x23:
                 eat = 1
-            #elif c == '\n':
             elif c == 0x0a:
                 eat = 0
             if not eat:
                 newimage.append(c)
         return newimage
 
-    def pti_tape(self, image):
+    @staticmethod
+    def pti_tape(image):
         # determines if tape image is really a PTI file
         # and converted to binary (G15) if it is
-
+        #
         # is this an ascii file
         # we count in case of noise in the file (raw images)
         count_ascii = 0
@@ -457,14 +462,14 @@ class G15Ptr:
         return new_image
 
     def byte_transpose(self, byte_in):
-        '''
-        :param self:
-        :param byte_in:	tape imaage
-        :return: 		tape image, bit columns reversed if necessary
-
-        tape from pricefuller are bit swapped (BIG ENDIAN at
-        bit level) need to swap MSB<->LSB
-        '''
+        #
+        # param self:
+        # param byte_in:	tape imaage
+        # return: 		tape image, bit columns reversed if necessary
+        #
+        # tape from pricefuller are bit swapped (BIG ENDIAN at
+        # bit level) need to swap MSB<->LSB
+        #
         byte_out = 0
         byte_in_copy = byte_in
 
@@ -481,15 +486,15 @@ class G15Ptr:
 
     @staticmethod
     def numbertrack_word(seed, position):
-        ''' create a number track image
-
-        used to determine if first block of tape is a number track
-        we want to skip over number track during block reads
-
-        :param seed:
-        :param position:
-        :return:
-        '''
+        # create a number track image
+        #
+        # used to determine if first block of tape is a number track
+        # we want to skip over number track during block reads
+        #
+        # param seed:
+        # param position:
+        # return:
+        #
         word = seed
         word |= position << 21
         word |= position << 13
@@ -564,7 +569,7 @@ class G15Ptr:
 
         self.read_index += 1
         return block
-    #
+
     #######################################
     #
     # reverse paper tape by number of blocks specified
@@ -572,7 +577,6 @@ class G15Ptr:
     # count = 0 => rewind the entire tape
     #
     #######################################
-    #
     def reverse(self, count):
         if count == 0:
             self.read_index = 0
@@ -584,7 +588,7 @@ class G15Ptr:
     def Status(self):
         gl.logprint('\nPaper tape Status:')
 
-        name = self.tape_name
+        name = self.file_name
         if name == '':
             name = 'No tape Mounted'
 

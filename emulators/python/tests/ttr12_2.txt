@@ -1,6 +1,6 @@
 
 #
-# run test routines #1
+# run test routines #2
 
 verbosity drum 0
 verbosity cpu 0
@@ -24,10 +24,9 @@ run 100
 verify drum CN:0:107 0147x86w
 verify drum 19:0:107 0
 
-dd CN:0:107
+# dd CN:0:107
 
 # select test routine #2
-set
 verify iostatus IO_STATUS_IN_TYPEWRITER
 type 0000005ts
 
@@ -37,7 +36,7 @@ run 200
 verify iostatus IO_STATUS_IN_TYPEWRITER
 type 0000010ts
 
-run 3000
+run 30000
 
 status cpu
 status sim

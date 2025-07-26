@@ -6,7 +6,6 @@ NOTE:  This is a ISA emulator working at the word/instruction level
 """
 
 import sys
-import copy
 import time
 
 from G15Subr import *

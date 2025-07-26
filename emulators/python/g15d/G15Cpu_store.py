@@ -27,7 +27,7 @@ class g15d_store:
         viaAR = instruction['cmd_type'] & (CMD_TYPE_TVA | CMD_TYPE_AVA)
         AR_add_sub = instruction['cmd_type'] & (CMD_TYPE_AD | CMD_TYPE_SU)
 #        blockWrite = viaAR and Ts        # block during low ordered word if via AR
-        blockWrite = viaAR and (word_time%2)==0        # block during low ordered word if via AR
+        blockWrite = viaAR and (word_time % 2) == 0        # block during low ordered word if via AR
 
         if self.cpu.verbosity & G15Cpu.VERBOSITY_CPU_LATE_BUS:
             gl.logprint('bw=', blockWrite, ' viaar=', viaAR, ' ts=', Ts)
@@ -50,24 +50,24 @@ class g15d_store:
 
             if AR_add_sub:
                 # eliminate -0
-                new_ar = self.g15.drum.read(AR, 0);
+                new_ar = self.g15.drum.read(AR, 0)
                 if new_ar == 1 and self.cpu.flop_is:
-                    self.g15.drum.write(AR, 0, 0);	# fixed from two args to three...RK
+                    self.g15.drum.write(AR, 0, 0)	    # fixed from two args to three...RK
 
         elif destination == MZ:  # TEST, MZ is not user writable
             # TEST instruction
 
             # if late_bus & (MASK29BIT - 1):	# ignore sign bit
             if late_bus:        # all bits including sign bits
-                #gl.logprint('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
-                #gl.logprint('latebus: n', instruction['n'])
+                # gl.logprint('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
+                # gl.logprint('latebus: n', instruction['n'])
                 instruction['next_cmd_word_time'] = instruction['n'] + 1
                 if instruction['loc'] == 107:
                     instruction['next_cmd_word_time'] -= 20
                     instruction['next_cmd_word_time'] += 108
                     instruction['next_cmd_word_time'] %= 108
                     
-                #gl.logprint('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
+                # gl.logprint('latebus: next_cmd_word_time', instruction['next_cmd_word_time'])
 
             if instruction['s'] < 28 and instruction['dp'] == 0 and instruction['ch'] == 2:
                 data = self.g15.drum.read(instruction['s'], word_time)
